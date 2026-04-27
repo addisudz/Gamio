@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Candy Crush</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f7dae6;
+            --board-bg: rgba(0, 0, 0, 0.2);
+            --header-bg: rgba(255, 255, 255, 0.4);
+            --text-color: #5d355b;
+            --accent: #ff4081;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #fce4ec, #f8bbd0);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+            touch-action: none; 
+        }
+
+        #header {
+            width: 100%;
+            padding: 15px 20px;
+            background: var(--header-bg);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            z-index: 10;
+        }
+
+        .stat-box { display: flex; flex-direction: column; align-items: flex-start; }
+        .stat-label { font-size: 0.8rem; text-transform: uppercase; font-weight: 700; color: var(--accent); letter-spacing: 1px; }
+        .stat-value { font-family: 'Fredoka One', cursive; font-size: 2rem; color: var(--text-color); text-shadow: 2px 2px 0px white; }
+
+        .quit-btn {
+            background: linear-gradient(to bottom, #ff5252, #ff1744);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-family: 'Fredoka One', cursive;
+            border-radius: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #b71c1c;
+            transition: all 0.1s;
+            font-size: 1rem;
+        }
+        .quit-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #b71c1c;
+        }
+
+        #game-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 10px;
+        }
+
+        #board {
+            width: 95vw;
+            max-width: 400px;
+            aspect-ratio: 8 / 10;
+            background: var(--board-bg);
+            border-radius: 12px;
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(10, 1fr);
+            gap: 2px;
+            padding: 4px;
+            position: relative;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .cell {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .cell:nth-child(even) { background: rgba(255, 255, 255, 0.4); }
+
+        .candy {
+            width: 8.5%;
+            aspect-ratio: 1 / 1; 
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: absolute;
+            transition: transform 0.2s ease, top 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 2;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
+            cursor: pointer;
+        }
+        .candy.selected {
+            transform: scale(1.1);
+            filter: drop-shadow(0 0 10px white) drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+            z-index: 5;
+        }
+        
+        /* Special Candy Effects overlaying standard CSS */
+
+        .candy.wrapped {
+            animation: pulse-wrapped 1s infinite alternate;
+        }
+        @keyframes pulse-wrapped {
+            from { filter: drop-shadow(0 0 5px rgba(255,255,255,0.8)); }
+            to { filter: drop-shadow(0 0 15px rgba(255,255,255,1)); }
+        }
+
+        .screen {
+            position: fixed; inset: 0; background: rgba(246, 228, 236, 0.95);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 100; backdrop-filter: blur(5px); transition: opacity 0.3s;
+        }
+        .screen.hidden { opacity: 0; pointer-events: none; }
+
+        .title {
+            font-family: 'Fredoka One', cursive; font-size: 4rem; text-align: center; line-height: 1.1; margin-bottom: 30px;
+            background: -webkit-linear-gradient(45deg, #ff4081, #ff9100);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.2));
+        }
+
+        .btn {
+            background: linear-gradient(to bottom, #ff4081, #d81b60); color: white; border: none;
+            padding: 15px 40px; font-size: 1.5rem; font-family: 'Fredoka One', cursive; border-radius: 30px;
+            box-shadow: 0 6px 0 #880e4f, 0 10px 20px rgba(0,0,0,0.3); cursor: pointer; transition: all 0.1s;
+        }
+        .btn:active { transform: translateY(6px); box-shadow: 0 0px 0 #880e4f, 0 4px 10px rgba(0,0,0,0.3); }
+        .btn.secondary { background: linear-gradient(to bottom, #2196f3, #1565c0); box-shadow: 0 6px 0 #0d47a1, 0 10px 20px rgba(0,0,0,0.3); margin-top: 15px; }
+        .btn.secondary:active { transform: translateY(6px); box-shadow: 0 0px 0 #0d47a1, 0 4px 10px rgba(0,0,0,0.3); }
+
+        .leaderboard {
+            width: 100%;
+            margin-top: 20px;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 12px;
+            padding: 10px;
+            max-width: 320px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .leaderboard-title {
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.2rem;
+            color: var(--text-color);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .leaderboard-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-color);
+        }
+        .leaderboard-row:last-child { border-bottom: none; }
+        .leaderboard-row.me { background: rgba(255, 64, 129, 0.1); border-radius: 8px; color: var(--accent); }
+        .rank { width: 30px; }
+        .name { flex: 1; text-align: left; }
+        .score { text-align: right; }
+
+        .floating-text {
+            position: absolute; font-family: 'Fredoka One', cursive; font-size: 2rem; color: white;
+            text-shadow: 2px 2px 0px #d81b60, -1px -1px 0px #d81b60, 0 0 10px rgba(255,255,255,0.5); 
+            pointer-events: none;
+            animation: floatUp 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; z-index: 20;
+        }
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(0.5); opacity: 0; }
+            30% { transform: translateY(-20px) scale(1.2); opacity: 1; }
+            80% { transform: translateY(-30px) scale(1); opacity: 1; }
+            100% { transform: translateY(-40px) scale(0.8); opacity: 0; }
+        }
+
+        .praise-word {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-family: 'Fredoka One', cursive; font-size: 4rem; text-align: center;
+            color: white; text-shadow: 0 0 20px #ff4081, 4px 4px 0 #d81b60;
+            pointer-events: none; z-index: 1000;
+            animation: praisePop 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes praisePop {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(-10deg); opacity: 0; }
+            20% { transform: translate(-50%, -50%) scale(1.5) rotate(5deg); opacity: 1; }
+            80% { transform: translate(-50%, -50%) scale(1.2) rotate(0deg); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 0; }
+        }
+
+        /* SYNC & LOADING OVERLAYS */
+        .sync-overlay, .loading-screen {
+            position: fixed; inset: 0; background: rgba(0, 0, 0, 0.9); z-index: 10000;
+            display: flex; align-items: center; justify-content: center; transition: opacity 0.4s ease;
+        }
+        .sync-overlay { opacity: 0; pointer-events: none; }
+        .sync-overlay.visible { opacity: 1; pointer-events: all; }
+        .loading-screen { opacity: 1; pointer-events: all; z-index: 20000; }
+        .loading-screen.hidden { opacity: 0; pointer-events: none; }
+        
+        .sync-content, .loading-content { text-align: center; color: white; animation: syncPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes syncPop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        
+        .sync-spinner, .loading-spinner {
+            width: 50px; height: 50px; border: 4px solid rgba(255, 255, 255, 0.1); border-top: 4px solid var(--accent);
+            border-radius: 50%; margin: 0 auto; animation: spin 1s linear infinite;
+        }
+        .sync-status, .loading-status { margin-top: 16px; font-size: 1.2rem; font-weight: 700; color: var(--accent); font-family: 'Nunito', sans-serif; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Laser animations */
+        .laser-h {
+            position: absolute; height: 10px; width: 100%; background: #fff; box-shadow: 0 0 10px #ffea00, 0 0 20px #ffea00, 0 0 30px #f50057;
+            z-index: 15; animation: laserFade 0.6s ease-out forwards; pointer-events: none; border-radius: 5px;
+        }
+        .laser-v {
+            position: absolute; width: 10px; height: 100%; background: #fff; box-shadow: 0 0 10px #ffea00, 0 0 20px #ffea00, 0 0 30px #f50057;
+            z-index: 15; animation: laserFade 0.6s ease-out forwards; pointer-events: none; border-radius: 5px;
+        }
+        @keyframes laserFade {
+            0% { opacity: 0; transform: scale(1); }
+            10% { opacity: 1; transform: scale(1.5); }
+            100% { opacity: 0; transform: scale(1); }
+        }
+        
+    </style>
+</head>
+<body>
+
+    <div id="header">
+        <div class="stat-box"><div class="stat-label">Score</div><div class="stat-value" id="score">0</div></div>
+        <button class="quit-btn" onclick="quitGame()">QUIT</button>
+    </div>
+
+    <div id="game-area">
+        <div id="board"></div>
+    </div>
+
+    <div id="start-screen" class="screen">
+        <div class="title">CANDY<br>CRUSH</div>
+        <button class="btn" onclick="startGame()">PLAY</button>
+    </div>
+
+    <div id="game-over-screen" class="screen hidden">
+        <div class="title" id="end-title" style="font-size: 3rem; margin-bottom: 10px;">GAME OVER</div>
+        <div style="font-family: 'Fredoka One', cursive; font-size: 2.5rem; color: #5d355b; margin-bottom: 10px;">
+            Score: <span id="final-score" style="color: #ff4081;">0</span>
+        </div>
+        
+        <div id="leaderboard-container" class="leaderboard">
+            <div class="leaderboard-title">TOP 5 LEADERS</div>
+            <div id="leaderboard-list">
+                <!-- Loaded via JS -->
+            </div>
+        </div>
+
+        <button class="btn" onclick="startGame()" style="margin-top: 20px;">PLAY AGAIN</button>
+        <button class="btn secondary" onclick="window.Telegram.WebApp.close()">CLOSE GAME</button>
+    </div>
+
+    <div id="sync-overlay" class="sync-overlay">
+        <div class="sync-content">
+            <div id="sync-spinner" class="sync-spinner"></div>
+            <!-- Text removed per request -->
+        </div>
+    </div>
+
+    <div id="boot-loader" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-status">LOADING...</div>
+        </div>
+    </div>
+
+    <!-- SOUNDS -->
+    <audio id="sfx-bomb-created" src="/candy-crush/sound/colour-bomb-created.mp3" preload="auto"></audio>
+    <audio id="sfx-bomb-use" src="/candy-crush/sound/colour-bomb1.mp3" preload="auto"></audio>
+    <audio id="sfx-wrapped-created" src="/candy-crush/sound/wrapped-candy-created1.mp3" preload="auto"></audio>
+    <audio id="sfx-laser" src="/candy-crush/sound/line-blast1.mp3" preload="auto"></audio>
+    <audio id="v-sweet" src="/candy-crush/sound/sweet.mp3" preload="auto"></audio>
+    <audio id="v-tasty" src="/candy-crush/sound/tasty.mp3" preload="auto"></audio>
+    <audio id="v-delicious" src="/candy-crush/sound/delicious.mp3" preload="auto"></audio>
+    <audio id="v-divine" src="/candy-crush/sound/divine.mp3" preload="auto"></audio>
+    <audio id="v-sugar" src="/candy-crush/sound/sugar-crush.mp3" preload="auto"></audio>
+    <audio id="sfx-combo1" src="/candy-crush/sound/combo-sound1.mp3" preload="auto"></audio>
+    <audio id="sfx-combo2" src="/candy-crush/sound/combo-sound2.mp3" preload="auto"></audio>
+    <audio id="sfx-combo3" src="/candy-crush/sound/combo-sound3.mp3" preload="auto"></audio>
+    <audio id="sfx-combo4" src="/candy-crush/sound/combo-sound4.mp3" preload="auto"></audio>
+    <audio id="sfx-combo5" src="/candy-crush/sound/combo-sound5.mp3" preload="auto"></audio>
+    <audio id="sfx-combo6" src="/candy-crush/sound/combo-sound6.mp3" preload="auto"></audio>
+    <audio id="sfx-combo7" src="/candy-crush/sound/combo-sound7.mp3" preload="auto"></audio>
+
+    <audio id="mus-intro" src="/candy-crush/sound/candy_crush_intro2.mp3" preload="auto" loop></audio>
+    <audio id="mus-game" src="/candy-crush/sound/SA_Game_mode_mixed_modes_loop.mp3" preload="auto" loop></audio>
+    <audio id="mus-outro" src="/candy-crush/sound/candy_crush_outro1.mp3" preload="auto" loop></audio>
+
+<script>
+// ======================== PARAMS ========================
+(function() {
+const urlParams = new URLSearchParams(window.location.search);
+const userId = urlParams.get('user_id');
+const inlineMessageId = urlParams.get('inline_message_id');
+const chatId = urlParams.get('chat_id');
+const messageId = urlParams.get('message_id');
+const vToken = urlParams.get('v_token');
+window._tgData = { userId, inlineMessageId, chatId, messageId, vToken };
+})();
+const vToken = urlParams.get('v_token');
+
+// ======================== STATE ========================
+const width = 8, height = 10;
+const baseColors = ['blue', 'green', 'orange', 'purple', 'red', 'yellow'];
+let board = [];
+let score = 0;
+let isAnimating = false;
+let selectedCandy = null;
+let currentMusic = null;
+
+let cascadeDepth = 0;
+let specialsActivated = 0;
+let highestPraiseLevel = 0;
+
+const boardElement = document.getElementById('board');
+const scoreDisplay = document.getElementById('score');
+const leaderboardList = document.getElementById('leaderboard-list');
+
+const delay = ms => new Promise(res => setTimeout(res, ms));
+
+// ======================== BOARD GEN ========================
+
+function createBoard() {
+    boardElement.innerHTML = ''; board = [];
+    for (let r = 0; r < height; r++) {
+        board[r] = [];
+        for (let c = 0; c < width; c++) {
+            let cell = document.createElement('div');
+            cell.classList.add('cell');
+            boardElement.appendChild(cell);
+            
+            let color = getRandomColor();
+            while (isInitialMatch(r, c, color)) color = getRandomColor();
+
+            let candy = createCandyDom(r, c, color, 'normal');
+            board[r][c] = { candy: candy, color: color, type: 'normal' };
+            boardElement.appendChild(candy);
+        }
+    }
+    updateCandyPositions();
+}
+
+function getRandomColor() { return baseColors[Math.floor(Math.random() * baseColors.length)]; }
+
+function isInitialMatch(r, c, color) {
+    if (c >= 2 && board[r][c-1].color === color && board[r][c-2].color === color) return true;
+    if (r >= 2 && board[r-1][c].color === color && board[r-2][c].color === color) return true;
+    return false;
+}
+
+function createCandyDom(r, c, color, type) {
+    let candy = document.createElement('div');
+    candy.classList.add('candy');
+    candy.dataset.r = r; candy.dataset.c = c;
+    applyAppearance(candy, color, type);
+    candy.addEventListener('pointerdown', onPointerDown);
+    return candy;
+}
+
+function applyAppearance(el, color, type) {
+    el.className = 'candy'; // reset
+    if (type === 'color_bomb') {
+        el.style.backgroundImage = `url('/candy-crush/bomb.png')`;
+    } else if (type === 'wrapped') {
+        el.style.backgroundImage = `url('/candy-crush/${color}-wrapped.png')`;
+        el.classList.add('wrapped');
+    } else if (type === 'striped_h') {
+        el.style.backgroundImage = `url('/candy-crush/${color}-horizontal.png')`;
+    } else if (type === 'striped_v') {
+        el.style.backgroundImage = `url('/candy-crush/${color}-vertical.png')`;
+    } else {
+        el.style.backgroundImage = `url('/candy-crush/${color}-candy.png')`;
+    }
+}
+
+function updateCandyPositions() {
+    const rect = boardElement.getBoundingClientRect();
+    const cellHeight = rect.height / height;
+    const cellWidth = rect.width / width;
+    
+    for (let r = 0; r < height; r++) {
+        for (let c = 0; c < width; c++) {
+            if (board[r][c] && board[r][c].candy) {
+                let candy = board[r][c].candy;
+                // Shifted slightly to the top-left (reduced from 0.02 to 0.015)
+                candy.style.top = `${4 + r * cellHeight + (rect.width * 0.015)}px`;
+                candy.style.left = `${4 + c * cellWidth + (rect.width * 0.015)}px`;
+                candy.dataset.r = r; candy.dataset.c = c;
+            }
+        }
+    }
+}
+window.addEventListener('resize', () => setTimeout(updateCandyPositions, 100));
+
+// ======================== INTERACTION ========================
+
+let touchStartX = 0;
+let touchStartY = 0;
+
+function onPointerDown(e) {
+    if (isAnimating) return;
+    let candy = e.target;
+    selectedCandy = candy;
+    candy.classList.add('selected');
+    touchStartX = e.clientX;
+    touchStartY = e.clientY;
+    e.preventDefault(); // prevent default dragging
+}
+
+window.addEventListener('pointerup', (e) => {
+    if (!selectedCandy || isAnimating) return;
+    
+    let diffX = e.clientX - touchStartX;
+    let diffY = e.clientY - touchStartY;
+    
+    selectedCandy.classList.remove('selected');
+    
+    let r = parseInt(selectedCandy.dataset.r);
+    let c = parseInt(selectedCandy.dataset.c);
+    let targetR = r;
+    let targetC = c;
+    
+    // Swipe threshold
+    if (Math.abs(diffX) > 20 || Math.abs(diffY) > 20) {
+        if (Math.abs(diffX) > Math.abs(diffY)) {
+            // Horizontal Swipe
+            if (diffX > 0) targetC++; else targetC--;
+        } else {
+            // Vertical Swipe
+            if (diffY > 0) targetR++; else targetR--;
+        }
+        
+        // Bounds check
+        if (targetR >= 0 && targetR < height && targetC >= 0 && targetC < width) {
+            swapCandies(r, c, targetR, targetC);
+        }
+    }
+    
+    selectedCandy = null;
+});
+
+async function swapCandies(r1, c1, r2, c2) {
+    isAnimating = true; selectedCandy = null;
+    cascadeDepth = 0; specialsActivated = 0; highestPraiseLevel = 0;
+
+    let obj1 = board[r1][c1], obj2 = board[r2][c2];
+    board[r1][c1] = obj2; board[r2][c2] = obj1;
+    updateCandyPositions();
+    await delay(300);
+
+    // Swap Info Object for context in special combinations or normal matches
+    let swapData = { r1, c1, r2, c2, color1: obj1.color, color2: obj2.color };
+
+    // Handle Combos
+    let c1Special = obj1.type !== 'normal';
+    let c2Special = obj2.type !== 'normal';
+
+    if (c1Special || c2Special) {
+        let handled = await handleComboInteractions(r1, c1, r2, c2, obj1, obj2);
+        if (handled) {
+            await processCascade();
+            return;
+        }
+    }
+
+    // Normal Match check
+    let matches = extractClusters();
+    if (matches.clusters.length > 0) {
+        playComboSound(1);
+        await resolveClusters(matches.clusters, swapData);
+        await processCascade();
+    } else {
+        // Revert
+        board[r1][c1] = obj1; board[r2][c2] = obj2;
+        updateCandyPositions();
+        await delay(300);
+        isAnimating = false;
+    }
+}
+
+// ======================== ADVANCED COMBO LOGIC ========================
+// Returns True if a combo was executed, skipping normal matching
+async function handleComboInteractions(r1, c1, r2, c2, o1, o2) {
+    // Both Color Bombs
+    if (o1.type === 'color_bomb' && o2.type === 'color_bomb') {
+        await destroyCustom([], true); // board clear
+        return true;
+    }
+    
+    // One Color Bomb + Normal/Special
+    if (o1.type === 'color_bomb' || o2.type === 'color_bomb') {
+        let cbNode = o1.type === 'color_bomb' ? o1 : o2;
+        let targetNode = o1.type === 'color_bomb' ? o2 : o1;
+        let targetColor = targetNode.color;
+        
+        let toDestroy = new Set();
+        toDestroy.add(`${r1},${c1}`);
+        toDestroy.add(`${r2},${c2}`);
+        
+        // If swapped with special, classic turns all of that color to special. 
+        // For simplicity right now, Color Bomb clears all of that color.
+        for (let r=0; r<height; r++) {
+            for (let c=0; c<width; c++) {
+                if (board[r][c] && board[r][c].color === targetColor) {
+                    toDestroy.add(`${r},${c}`);
+                }
+            }
+        }
+        await destroyCustom(Array.from(toDestroy));
+        return true;
+    }
+
+    // Wrapped + Wrapped
+    if (o1.type === 'wrapped' && o2.type === 'wrapped') {
+        let toDestroy = new Set();
+        let centerR = r2, centerC = c2; 
+        for(let r=centerR-2; r<=centerR+2; r++) {
+            for(let c=centerC-2; c<=centerC+2; c++) {
+                if(r>=0 && r<height && c>=0 && c<width) toDestroy.add(`${r},${c}`);
+            }
+        }
+        await destroyCustom(Array.from(toDestroy));
+        return true;
+    }
+
+    // Striped + Striped
+    if (o1.type.startsWith('striped') && o2.type.startsWith('striped')) {
+        let toDestroy = new Set();
+        for(let r=0; r<height; r++) toDestroy.add(`${r},${c2}`);
+        for(let c=0; c<width; c++) toDestroy.add(`${r2},${c}`);
+        spawnLaser(r2, -1, 'h'); spawnLaser(-1, c2, 'v');
+        await destroyCustom(Array.from(toDestroy));
+        return true;
+    }
+
+    // Striped + Wrapped
+    if ((o1.type.startsWith('striped') && o2.type === 'wrapped') || (o2.type.startsWith('striped') && o1.type === 'wrapped')) {
+        let toDestroy = new Set();
+        for(let i=c2-1; i<=c2+1; i++) {
+            if(i>=0 && i<width) {
+                for(let r=0; r<height; r++) toDestroy.add(`${r},${i}`);
+                spawnLaser(-1, i, 'v');
+            }
+        }
+        for(let i=r2-1; i<=r2+1; i++) {
+            if(i>=0 && i<height) {
+                for(let c=0; c<width; c++) toDestroy.add(`${i},${c}`);
+                spawnLaser(i, -1, 'h');
+            }
+        }
+        await destroyCustom(Array.from(toDestroy));
+        return true;
+    }
+
+    return false; // Neither is a full combo pairing (or one is special and other is normal but not color bomb)
+}
+
+function evaluatePraise() {
+    let newLevel = 0;
+    if (cascadeDepth >= 5 || specialsActivated >= 3) newLevel = 4; // divine
+    else if (cascadeDepth >= 4 || specialsActivated >= 2) newLevel = 3; // delicious
+    else if (cascadeDepth >= 3 || specialsActivated >= 1) newLevel = 2; // tasty
+    else if (cascadeDepth >= 2) newLevel = 1; // sweet
+    
+    if (newLevel > highestPraiseLevel) {
+        highestPraiseLevel = newLevel;
+        if (newLevel === 1) { playSound('v-sweet'); showPraiseText('SWEET!'); }
+        else if (newLevel === 2) { playSound('v-tasty'); showPraiseText('TASTY!'); }
+        else if (newLevel === 3) { playSound('v-delicious'); showPraiseText('DELICIOUS!'); }
+        else if (newLevel === 4) { playSound('v-divine'); showPraiseText('DIVINE!'); }
+    }
+}
+
+// ======================== MATCH EXTRACTION ========================
+
+function extractClusters() {
+    let rawMatches = []; // array of {r, c, group}
+    
+    // Find Horizontal lines
+    for (let r=0; r<height; r++) {
+        let currentLen = 1; let currentColor = board[r][0] ? board[r][0].color : null;
+        for (let c=1; c<=width; c++) {
+            let nextColor = (c < width && board[r][c]) ? board[r][c].color : null;
+            if (nextColor && nextColor === currentColor && currentColor !== 'color_bomb') {
+                currentLen++;
+            } else {
+                if (currentLen >= 3) {
+                    for(let i=0; i<currentLen; i++) rawMatches.push({r, c: c - 1 - i});
+                }
+                currentLen = 1; currentColor = nextColor;
+            }
+        }
+    }
+
+    // Find Vertical lines
+    for (let c=0; c<width; c++) {
+        let currentLen = 1; let currentColor = board[0][c] ? board[0][c].color : null;
+        for (let r=1; r<=height; r++) {
+            let nextColor = (r < height && board[r][c]) ? board[r][c].color : null;
+            if (nextColor && nextColor === currentColor && currentColor !== 'color_bomb') {
+                currentLen++;
+            } else {
+                if (currentLen >= 3) {
+                    for(let i=0; i<currentLen; i++) rawMatches.push({r: r - 1 - i, c});
+                }
+                currentLen = 1; currentColor = nextColor;
+            }
+        }
+    }
+
+    if (rawMatches.length === 0) return { clusters: [] };
+
+    // Group interconnected matches of the same color
+    let uf = {}; 
+    const find = (i) => uf[i] === i ? i : (uf[i] = find(uf[i]));
+    const union = (i, j) => uf[find(i)] = find(j);
+
+    rawMatches.forEach((m, idx) => uf[idx] = idx);
+
+    for (let i=0; i<rawMatches.length; i++) {
+        for (let j=i+1; j<rawMatches.length; j++) {
+            let m1 = rawMatches[i], m2 = rawMatches[j];
+            if (board[m1.r][m1.c].color === board[m2.r][m2.c].color) {
+                // If adjacent (or same cell from cross-intersection)
+                let dist = Math.abs(m1.r - m2.r) + Math.abs(m1.c - m2.c);
+                if (dist === 0 || dist === 1) union(i, j);
+            }
+        }
+    }
+
+    let clustersMap = {};
+    rawMatches.forEach((m, idx) => {
+        let root = find(idx);
+        if (!clustersMap[root]) clustersMap[root] = new Set();
+        clustersMap[root].add(`${m.r},${m.c}`);
+    });
+
+    let clusters = Object.values(clustersMap).map(s => Array.from(s).map(str => {
+        let p = str.split(','); return { r: parseInt(p[0]), c: parseInt(p[1]) };
+    }));
+
+    return { clusters };
+}
+
+// ======================== CLUSTER RESOLUTION & SPECIAL SPAWN ========================
+
+async function resolveClusters(clusters, swapData) {
+    let toDestroy = new Set();
+    let specialsToSpawn = []; // {r, c, color, type}
+
+    clusters.forEach(arr => {
+        let minR = height, maxR = -1;
+        let minC = width, maxC = -1;
+        arr.forEach(({r, c}) => {
+            toDestroy.add(`${r},${c}`);
+            if(r < minR) minR = r; if(r > maxR) maxR = r;
+            if(c < minC) minC = c; if(c > maxC) maxC = c;
+        });
+
+        let spanR = maxR - minR + 1;
+        let spanC = maxC - minC + 1;
+        let len = arr.length;
+        
+        let color = board[arr[0].r][arr[0].c].color;
+        let spawnR = arr[0].r, spawnC = arr[0].c;
+
+        // Try to place special at swap interaction point, if it was involved
+        if (swapData) {
+            let intersect = arr.find(cell => (cell.r === swapData.r1 && cell.c === swapData.c1) || (cell.r === swapData.r2 && cell.c === swapData.c2));
+            if (intersect) { spawnR = intersect.r; spawnC = intersect.c; }
+            else {
+                // Pick a somewhat central point
+                spawnR = arr[Math.floor(len/2)].r;
+                spawnC = arr[Math.floor(len/2)].c;
+            }
+        }
+
+        // Logic for classification
+        let specialType = null;
+        if (len >= 5 && (spanR >= 5 || spanC >= 5)) specialType = 'color_bomb';
+        else if (spanR >= 3 && spanC >= 3) specialType = 'wrapped'; // L or T
+        else if (spanR === 4) specialType = 'striped_v'; // 4 tall
+        else if (spanC === 4) specialType = 'striped_h'; // 4 wide
+        else if (len >= 4) {
+            specialType = (spanR > spanC) ? 'striped_v' : 'striped_h'; // Fallback
+        }
+
+        if (specialType) {
+            specialsToSpawn.push({r: spawnR, c: spawnC, color, type: specialType});
+            if (specialType === 'color_bomb') playSound('sfx-bomb-created');
+            else if (specialType === 'wrapped') playSound('sfx-wrapped-created');
+        }
+    });
+
+    // Remove spawn locations from destroy set so they don't break
+    specialsToSpawn.forEach(s => toDestroy.delete(`${s.r},${s.c}`));
+
+    await executeDestruction(Array.from(toDestroy), specialsToSpawn);
+}
+
+// ======================== DESTRUCTION ENGINE ========================
+
+// Takes array of strings "r,c"
+async function destroyCustom(destroyArr, clearBoard=false) {
+    if (clearBoard) {
+        destroyArr = [];
+        for(let r=0; r<height; r++) for(let c=0; c<width; c++) destroyArr.push(`${r},${c}`);
+    }
+    await executeDestruction(destroyArr, []);
+    await processCascade();
+}
+
+async function executeDestruction(initialArr, specialsToSpawn) {
+    if (initialArr.length === 0 && specialsToSpawn.length === 0) return;
+
+    let queue = [...initialArr];
+    let processed = new Set();
+    let finalRemovals = new Set();
+    
+    // Recursive explosion resolution
+    while (queue.length > 0) {
+        let key = queue.shift();
+        if (processed.has(key)) continue;
+        processed.add(key);
+        
+        let [rStr, cStr] = key.split(',');
+        let r = parseInt(rStr), c = parseInt(cStr);
+        
+        if (!board[r][c]) continue; // Already empty
+        finalRemovals.add(key);
+        
+        let target = board[r][c];
+        
+        if (target.type !== 'normal') specialsActivated++;
+
+        if (target.type === 'striped_h') {
+            spawnLaser(r, -1, 'h');
+            for(let i=0; i<width; i++) queue.push(`${r},${i}`);
+        } else if (target.type === 'striped_v') {
+            spawnLaser(-1, c, 'v');
+            for(let i=0; i<height; i++) queue.push(`${i},${c}`);
+        } else if (target.type === 'wrapped') {
+            // Explode 3x3
+            for(let rr=r-1; rr<=r+1; rr++) {
+                for(let cc=c-1; cc<=c+1; cc++) {
+                    if (rr>=0 && rr<height && cc>=0 && cc<width) queue.push(`${rr},${cc}`);
+                }
+            }
+        } else if (target.type === 'color_bomb') {
+            playSound('sfx-bomb-use');
+            // A bomb caught in an explosion detonates a random color
+            let randomCol = baseColors[Math.floor(Math.random()*baseColors.length)];
+            for(let i=0; i<height; i++) for(let j=0; j<width; j++) {
+                if (board[i][j] && board[i][j].color === randomCol) queue.push(`${i},${j}`);
+            }
+        }
+    }
+
+    // Apply removals
+    let scoredPts = finalRemovals.size * 10;
+    score += scoredPts; scoreDisplay.innerText = score;
+    
+    evaluatePraise();
+    
+    if (finalRemovals.size > 0) {
+        let firstPos = Array.from(finalRemovals)[0].split(',');
+        showFloatingText(`+${scoredPts}`, firstPos[0], firstPos[1]);
+    }
+
+    finalRemovals.forEach(key => {
+        let [r, c] = key.split(',');
+        if (board[r][c] && board[r][c].candy) {
+            let nd = board[r][c].candy;
+            nd.style.transform = 'scale(0)'; nd.style.opacity = '0';
+            setTimeout(() => { if(nd.parentNode) nd.parentNode.removeChild(nd); }, 300);
+            board[r][c] = null;
+        }
+    });
+
+    // Morph specials
+    specialsToSpawn.forEach(s => {
+        if (board[s.r][s.c]) {
+            board[s.r][s.c].type = s.type;
+            if (s.type === 'color_bomb') board[s.r][s.c].color = 'color_bomb';
+            applyAppearance(board[s.r][s.c].candy, s.color, s.type);
+        }
+    });
+
+    await delay(350);
+}
+
+// ======================== GRAVITY & CASCADE ========================
+
+async function processCascade() {
+    let dropped = false;
+    for (let c = 0; c < width; c++) {
+        let emptyCount = 0;
+        for (let r = height - 1; r >= 0; r--) {
+            if (board[r][c] === null) {
+                emptyCount++;
+            } else if (emptyCount > 0) {
+                board[r + emptyCount][c] = board[r][c];
+                board[r][c] = null;
+                dropped = true;
+            }
+        }
+        
+        for (let r = 0; r < emptyCount; r++) {
+            let color = getRandomColor();
+            let candy = createCandyDom(r, c, color, 'normal');
+            candy.style.top = `-50px`; 
+            let rect = boardElement.getBoundingClientRect();
+            let cw = rect.width / width;
+            candy.style.left = `${4 + c * cw + (rect.width * 0.015)}px`;
+            
+            boardElement.appendChild(candy);
+            board[r][c] = { candy: candy, color: color, type: 'normal' };
+            dropped = true;
+        }
+    }
+
+    if (dropped) {
+        updateCandyPositions();
+        await delay(350);
+    }
+
+    let nextMatches = extractClusters();
+    if (nextMatches.clusters.length > 0) {
+        cascadeDepth++;
+        playComboSound(cascadeDepth + 1);
+        evaluatePraise();
+        await resolveClusters(nextMatches.clusters, null);
+        await processCascade();
+    } else {
+        isAnimating = false;
+    }
+}
+
+// ======================== HELPERS ========================
+
+function spawnLaser(r, c, dir) {
+    playSound('sfx-laser');
+    let el = document.createElement('div');
+    const rect = boardElement.getBoundingClientRect();
+    const cellH = rect.height / height;
+    const cellW = rect.width / width;
+
+    if (dir === 'h') {
+        el.className = 'laser-h';
+        el.style.top = `${4 + r * cellH + (cellH/2)}px`;
+        el.style.left = '0px';
+    } else {
+        el.className = 'laser-v';
+        el.style.left = `${4 + c * cellW + (cellW/2)}px`;
+        el.style.top = '0px';
+    }
+    boardElement.appendChild(el);
+    setTimeout(() => { if(el.parentNode) el.parentNode.removeChild(el); }, 600);
+}
+
+function showFloatingText(text, r, c) {
+    const el = document.createElement('div');
+    el.className = 'floating-text'; el.innerText = text;
+    const rect = boardElement.getBoundingClientRect();
+    el.style.left = `${rect.left + 4 + c * (rect.width/width) + 10}px`;
+    el.style.top = `${rect.top + 4 + r * (rect.height/height)}px`;
+    document.body.appendChild(el);
+    setTimeout(() => { if(el.parentNode) el.parentNode.removeChild(el); }, 1000);
+}
+
+function showPraiseText(text) {
+    const el = document.createElement('div');
+    el.className = 'praise-word';
+    el.innerText = text;
+    document.body.appendChild(el);
+    setTimeout(() => { if(el.parentNode) el.parentNode.removeChild(el); }, 1500);
+}
+
+function playSound(id) {
+    const s = document.getElementById(id);
+    if(s) {
+        s.currentTime = 0;
+        s.play().catch(e => {});
+    }
+}
+
+function playComboSound(depth) {
+    let soundIndex = Math.min(depth, 7);
+    playSound(`sfx-combo${soundIndex}`);
+}
+
+function switchMusic(id) {
+    if (currentMusic) {
+        currentMusic.pause();
+        currentMusic.currentTime = 0;
+    }
+    const next = document.getElementById(id);
+    if (next) {
+        currentMusic = next;
+        currentMusic.play().catch(e => {
+            console.log("Autoplay blocked or audio error", e);
+        });
+    }
+}
+
+// Start intro music on first interaction
+document.addEventListener('pointerdown', () => {
+    if (!currentMusic) switchMusic('mus-intro');
+}, { once: true });
+
+// Boot loader exit
+window.addEventListener('load', () => {
+    document.getElementById('boot-loader').classList.add('hidden');
+});
+
+// ======================== LIFECYCLE ========================
+
+function startGame() {
+    resetScoreSync();
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('game-over-screen').classList.add('hidden');
+    score = 0; scoreDisplay.innerText = score;
+    isAnimating = false; selectedCandy = null;
+    
+    switchMusic('mus-game');
+    
+    createBoard();
+    setTimeout(updateCandyPositions, 100);
+}
+
+function quitGame() {
+    if (isAnimating) return;
+    document.getElementById('end-title').innerText = "GAME OVER";
+    endGame();
+}
+
+async function endGame() {
+    isAnimating = true;
+    switchMusic('mus-outro');
+    showSyncOverlay("Saving score & loading leaderboard...");
+    
+    // Automatic Background Sync
+    await performFullSync();
+    
+    document.getElementById('final-score').innerText = score;
+    hideSyncOverlay();
+    document.getElementById('game-over-screen').classList.remove('hidden');
+}
+
+// ============================================================
+//  SCORE SYNC (HARDENED)
+// ============================================================
+(function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('user_id');
+    const inlineMessageId = urlParams.get('inline_message_id');
+    const chatId = urlParams.get('chat_id');
+    const messageId = urlParams.get('message_id');
+
+    const GAME_SECRET = "{{ game_secret }}";
+
+    function rc4Encrypt(key, str) {
+        let s = [], j = 0, x, res = '';
+        for (let i = 0; i < 256; i++) {
+            s[i] = i;
+        }
+        for (let i = 0; i < 256; i++) {
+            j = (j + s[i] + key.charCodeAt(i % key.length)) % 256;
+            x = s[i]; s[i] = s[j]; s[j] = x;
+        }
+        let i = 0; j = 0;
+        for (let y = 0; y < str.length; y++) {
+            i = (i + 1) % 256;
+            j = (j + s[i]) % 256;
+            x = s[i]; s[i] = s[j]; s[j] = x;
+            res += String.fromCharCode(str.charCodeAt(y) ^ s[(s[i] + s[j]) % 256]);
+        }
+        return res;
+    }
+
+    let scoreSubmitted = false;
+
+    async function performFullSync() {
+        if (scoreSubmitted || !userId) {
+            renderLeaderboard([{ position: 1, user: {first_name: "Player 1"}, score: 5000 }, { position: 2, user: {first_name: "You"}, score: (typeof score !== 'undefined' ? score : 0) }]);
+            return;
+        }
+        scoreSubmitted = true;
+
+        try {
+            const currentScore = (typeof score !== 'undefined' ? score : 0);
+            
+            const payloadObj = {
+                user_id: userId,
+                score: currentScore,
+                inline_message_id: inlineMessageId,
+                chat_id: chatId,
+                message_id: messageId
+            };
+            const jsonStr = JSON.stringify(payloadObj);
+            const b64Payload = btoa(rc4Encrypt(GAME_SECRET, jsonStr));
+            
+            await fetch('/api/set_score', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ payload: b64Payload }) 
+            });
+
+            // For leaderboard, we still use the old params which main.py handles
+            // (Note: get_leaderboard logic in main.py wasn't changed to RC4 yet, but the user only asked for set_score security)
+            const lbPayload = { user_id: userId, inline_message_id: inlineMessageId, chat_id: chatId, message_id: messageId };
+            const lbResp = await fetch('/api/get_leaderboard', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lbPayload) });
+            if (lbResp.ok) {
+                const lbData = await lbResp.json();
+                if (lbData.ok) renderLeaderboard(lbData.result);
+            }
+        } catch (e) {
+            console.error("Sync failed", e);
+        }
+    }
+    window._performFullSync = performFullSync;
+    window._resetSync = () => { scoreSubmitted = false; };
+})();
+
+async function performFullSync() {
+    if (window._performFullSync) await window._performFullSync();
+}
+
+function resetScoreSync() {
+    if (window._resetSync) window._resetSync();
+}
+
+function renderLeaderboard(data) {
+    leaderboardList.innerHTML = '';
+    data.slice(0, 5).forEach(item => {
+        const row = document.createElement('div');
+        row.classList.add('leaderboard-row');
+        if (String(item.user.id) === String(userId)) row.classList.add('me');
+        
+        row.innerHTML = `
+            <span class="rank">${item.position}</span>
+            <span class="name">${item.user.first_name}</span>
+            <span class="score">${item.score}</span>
+        `;
+        leaderboardList.appendChild(row);
+    });
+}
+
+function showSyncOverlay(msg = "") {
+    document.getElementById("sync-spinner").style.display = "block";
+    document.getElementById("sync-overlay").classList.add("visible");
+}
+function hideSyncOverlay() { document.getElementById("sync-overlay").classList.remove("visible"); }
+</script>
+</body>
+</html>

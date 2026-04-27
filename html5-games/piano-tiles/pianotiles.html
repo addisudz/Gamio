@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Piano Tiles</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: #f0f0f0;
+            overflow: hidden;
+            touch-action: none;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #scoreHud {
+            position: absolute;
+            top: 5%;
+            width: 100%;
+            text-align: center;
+            font-size: 3.5rem;
+            font-weight: 900;
+            color: #222;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.15s;
+        }
+
+
+
+        #progressBarContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(0, 0, 0, 0.05);
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        #progressBar {
+            width: 0%;
+            height: 100%;
+            background: #000;
+            transition: background 0.5s;
+        }
+
+        .sync-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(5, 5, 15, 0.92);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+            backdrop-filter: blur(12px);
+        }
+
+        .sync-overlay.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .sync-content {
+            text-align: center;
+            color: white;
+            animation: syncPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes syncPop {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .sync-spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid rgba(255, 255, 255, 0.08);
+            border-top: 6px solid #c084fc;
+            border-radius: 50%;
+            margin: 0 auto;
+            animation: spin 1s linear infinite;
+        }
+
+        .sync-status {
+            margin-top: 20px;
+            font-size: 1.2rem;
+            font-weight: 900;
+            color: #ffd700;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+        }
+
+        .sync-btn {
+            margin-top: 24px;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #7c3aed, #c084fc);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 900;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            display: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="progressBarContainer">
+        <div id="progressBar"></div>
+    </div>
+
+    <div id="scoreHud">0</div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="sync-overlay" class="sync-overlay">
+        <div class="sync-content">
+            <div id="sync-spinner" class="sync-spinner"></div>
+            <div id="sync-status-msg" class="sync-status"></div>
+            <button id="sync-continue-btn" class="sync-btn">Continue</button>
+        </div>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════════
+        //  TELEGRAM (HARDENED)
+        // ═══════════════════════════════════════════════════════════════════
+        (function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('user_id');
+            const inlineMessageId = urlParams.get('inline_message_id');
+            const chatId = urlParams.get('chat_id');
+            const messageId = urlParams.get('message_id');
+
+            const GAME_SECRET = "{{ game_secret }}";
+
+            function rc4Encrypt(key, str) {
+                let s = [], j = 0, x, res = '';
+                for (let i = 0; i < 256; i++) {
+                    s[i] = i;
+                }
+                for (let i = 0; i < 256; i++) {
+                    j = (j + s[i] + key.charCodeAt(i % key.length)) % 256;
+                    x = s[i]; s[i] = s[j]; s[j] = x;
+                }
+                let i = 0; j = 0;
+                for (let y = 0; y < str.length; y++) {
+                    i = (i + 1) % 256;
+                    j = (j + s[i]) % 256;
+                    x = s[i]; s[i] = s[j]; s[j] = x;
+                    res += String.fromCharCode(str.charCodeAt(y) ^ s[(s[i] + s[j]) % 256]);
+                }
+                return res;
+            }
+
+            async function fetchLeaderboard() {
+                if (!userId) return;
+                try {
+                    const response = await fetch('/api/get_leaderboard', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            user_id: userId,
+                            inline_message_id: inlineMessageId,
+                            chat_id: chatId,
+                            message_id: messageId
+                        })
+                    });
+                    const data = await response.json();
+                    if (data.ok) {
+                        leaderboardData = data.leaderboard || [];
+                        userRank = data.user_rank;
+                    }
+                } catch (err) {
+                    console.error("Leaderboard fetch failed:", err);
+                }
+            }
+
+            let scoreSubmitted = false;
+
+            async function submitScore(sc, silent = false) {
+                const overlay = document.getElementById('sync-overlay');
+                const statusMsg = document.getElementById('sync-status-msg');
+                const syncSpinner = document.getElementById('sync-spinner');
+                const continueBtn = document.getElementById('sync-continue-btn');
+                if (scoreSubmitted || !userId || sc <= 0) return;
+                scoreSubmitted = true;
+
+                if (!silent) {
+                    overlay.classList.add('visible');
+                    statusMsg.textContent = "";
+                    continueBtn.style.display = 'none';
+                    syncSpinner.style.display = 'block';
+                }
+
+                try {
+                    const payloadObj = {
+                        user_id: userId,
+                        score: sc,
+                        inline_message_id: inlineMessageId,
+                        chat_id: chatId,
+                        message_id: messageId
+                    };
+                    const jsonStr = JSON.stringify(payloadObj);
+                    const b64Payload = btoa(rc4Encrypt(GAME_SECRET, jsonStr));
+
+                    const response = await fetch('/api/set_score', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ payload: b64Payload })
+                    });
+                    const data = await response.json();
+                    if (response.ok && data.ok) {
+                        fetchLeaderboard(); // Refresh leaderboard data
+                        if (!silent) {
+                            if (data.rank && data.rank > 0) {
+                                syncSpinner.style.display = 'none';
+                                statusMsg.textContent = "RANK #" + data.rank;
+                                continueBtn.style.display = 'block';
+                            } else { hideSyncOverlay(); }
+                        }
+                    } else { if (!silent) hideSyncOverlay(); }
+                } catch (err) { if (!silent) hideSyncOverlay(); }
+            }
+
+            function hideSyncOverlay() {
+                document.getElementById('sync-overlay').classList.remove('visible');
+            }
+
+            document.getElementById('sync-continue-btn').addEventListener('click', hideSyncOverlay);
+
+            // Fetch on load
+            fetchLeaderboard();
+
+            // Export to window safely
+            window._submitScore = submitScore;
+            window._resetSync = () => { scoreSubmitted = false; };
+        })();
+
+        // Global proxy for game engine
+        function submitScore(sc, silent = false) {
+            if (window._submitScore) window._submitScore(sc, silent);
+        }
+
+        function resetScoreSync() {
+            if (window._resetSync) window._resetSync();
+        }
+
+        function hideSyncOverlay() {
+            document.getElementById('sync-overlay').classList.remove('visible');
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  AUDIO — Offline beat analysis + playback
+        // ═══════════════════════════════════════════════════════════════════
+        let audioCtx = null;
+        let songBuffer = null;
+        let activeSource = null; // BufferSourceNode for playback
+        let audioStartTime = 0;  // Context time when playback started
+        let beatMap = [];
+        let songReady = false;
+        let loadProgress = 0;
+
+        async function loadAndAnalyzeSong() {
+            try {
+                loadProgress = 0.1;
+
+                // 1. Fetch the audio data for analysis and playback
+                const resp = await fetch('/piano-tiles/song.mp3');
+                if (!resp.ok) throw new Error("Audio not found");
+                const arrayBuf = await resp.arrayBuffer();
+                loadProgress = 0.4;
+
+                // 2. Decode into memory
+                const offCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100, 44100);
+                songBuffer = await offCtx.decodeAudioData(arrayBuf);
+                loadProgress = 0.8;
+
+                // 3. Perform Spectral Analysis
+                beatMap = detectBeatsWithFrequency(songBuffer);
+
+                loadProgress = 1.0;
+                songReady = true;
+            } catch (e) {
+                console.error('Song load failed:', e);
+                loadProgress = 1.0;
+                songReady = true;
+            }
+        }
+
+        function detectBeatsWithFrequency(buffer) {
+            const data = buffer.getChannelData(0);
+            const sampleRate = buffer.sampleRate;
+            const frameSize = Math.floor(sampleRate * 0.02); // 20ms frames
+            const hopSize = Math.floor(frameSize / 2);        // 10ms hop
+            const numFrames = Math.floor((data.length - frameSize) / hopSize);
+
+            // 1. Compute energy per frame
+            const energies = new Float32Array(numFrames);
+            for (let i = 0; i < numFrames; i++) {
+                const start = i * hopSize;
+                let sum = 0;
+                for (let j = 0; j < frameSize; j++) {
+                    const s = data[start + j];
+                    sum += s * s;
+                }
+                energies[i] = sum / frameSize;
+            }
+
+            // 2. Compute spectral flux (onset detection)
+            const flux = new Float32Array(numFrames);
+            for (let i = 1; i < numFrames; i++) {
+                const diff = energies[i] - energies[i - 1];
+                flux[i] = diff > 0 ? diff : 0;
+            }
+
+            const beats = [];
+            const thresholdMultiplier = 1.6; // Standard sensitivity
+            const minInterval = 0.160;      // Standard spacing (160ms) - less crowded
+            const peakWindow = 4;
+            const windowSize = 30;
+
+            for (let i = windowSize; i < numFrames - windowSize; i++) {
+                let localSum = 0;
+                const win = 35;
+                for (let j = i - win; j <= i + win; j++) {
+                    localSum += flux[j];
+                }
+                const threshold = (localSum / (win * 2 + 1)) * thresholdMultiplier + 0.0002;
+
+                if (flux[i] > threshold) {
+                    let isPeak = true;
+                    for (let j = i - peakWindow; j <= i + peakWindow; j++) {
+                        if (flux[j] > flux[i]) {
+                            isPeak = false;
+                            break;
+                        }
+                    }
+
+                    if (isPeak) {
+                        const time = (i * hopSize) / sampleRate;
+                        if (beats.length === 0 || time - beats[beats.length - 1].t >= minInterval) {
+                            const startSample = i * hopSize;
+                            const endSample = startSample + frameSize;
+                            let zcr = 0;
+                            const chData = buffer.getChannelData(0);
+                            for (let s = startSample + 1; s < endSample; s++) {
+                                if ((chData[s] >= 0 && chData[s - 1] < 0) || (chData[s] < 0 && chData[s - 1] >= 0)) zcr++;
+                            }
+                            const freq = (zcr / 2) * (sampleRate / frameSize);
+
+                            let col = 0;
+                            if (freq > 1800) col = 3;
+                            else if (freq > 900) col = 2;
+                            else if (freq > 400) col = 1;
+
+                            let l1 = beats.length > 0 ? beats[beats.length - 1].c : -1;
+                            let l2 = beats.length > 1 ? beats[beats.length - 2].c : -1;
+
+                            // Deterministically pick a lane that is NOT l1 or l2
+                            const forbidden = new Set([l1, l2]);
+                            const available = [0, 1, 2, 3].filter(c => !forbidden.has(c));
+                            if (!available.includes(col)) {
+                                col = available[Math.floor(Math.random() * available.length)];
+                            }
+
+                            beats.push({ t: time, c: col, f: freq });
+                            i += peakWindow;
+                        }
+                    }
+                }
+            }
+            console.log(`Analyzed ${beats.length} piano notes.`);
+            return beats.sort((a, b) => a.t - b.t);
+        }
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playSong() {
+            if (!songBuffer) return;
+            initAudio();
+
+            // Stop existing source if any
+            if (activeSource) {
+                try { activeSource.stop(); } catch (e) { }
+            }
+
+            // Create new buffer source
+            activeSource = audioCtx.createBufferSource();
+            activeSource.buffer = songBuffer;
+            activeSource.playbackRate.value = gameSpeed;
+
+            // Setup Visualizer
+            analyserNode = audioCtx.createAnalyser();
+            analyserNode.fftSize = 256;
+            frequencyData = new Uint8Array(analyserNode.frequencyBinCount);
+
+            activeSource.connect(analyserNode);
+            analyserNode.connect(audioCtx.destination);
+
+            audioStartTime = audioCtx.currentTime;
+            activeSource.start(0);
+
+            activeSource.onended = () => {
+                if (gameState === STATE.PLAYING) onLevelCleared();
+            };
+        }
+
+        function stopSong() {
+            if (activeSource) {
+                try { activeSource.stop(); } catch (e) { }
+                activeSource = null;
+            }
+        }
+
+        let gameTime = 0;
+        let prevSongTime = 0;
+
+        function getSongTime() {
+            if (gameState !== STATE.PLAYING || !activeSource) return gameTime;
+
+            // Web Audio Clock is extremely precise
+            const elapsed = (audioCtx.currentTime - audioStartTime) * gameSpeed;
+            gameTime = elapsed;
+            return gameTime;
+        }
+
+        // Tap feedback sound — updated for real note recognition
+        function playTapSound(col, freqOverride = null) {
+            // Tone removed as per user request
+        }
+
+        function playMissSound() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.linearRampToValueAtTime(80, now + 0.3);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  CANVAS
+        // ═══════════════════════════════════════════════════════════════════
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreHud = document.getElementById('scoreHud');
+        const progressBarContainer = document.getElementById('progressBarContainer');
+        const progressBar = document.getElementById('progressBar');
+
+        const LEVEL_COLORS = [
+            '#000000', // L1: Black
+            '#FFD700', // L2: Gold
+            '#A020F0', // L3: Purple
+            '#DC143C', // L4: Crimson
+            '#4169E1', // L5: Royal Blue
+            '#FF8C00', // L6: Orange
+            '#008B8B'  // L7+: Dark Cyan
+        ];
+        let W, H;
+        const COLS = 4;
+        let colW, rowH;
+
+        // The "hit line" — where the player should tap tiles
+        // Positioned at ~80% of screen height
+        let HIT_Y;
+
+        function resize() {
+            W = window.innerWidth;
+            H = window.innerHeight;
+            canvas.width = W;
+            canvas.height = H;
+            colW = W / COLS;
+            rowH = H / 4; // Taller tiles
+            HIT_Y = H * 0.78;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  GAME STATE
+        // ═══════════════════════════════════════════════════════════════════
+        const STATE = { MENU: 0, PLAYING: 1, GAMEOVER: 2, CLEARED: 3 };
+        let gameState = STATE.MENU;
+        let score = 0;
+        let currentLevel = 1;
+        let gameSpeed = 1.0;
+        let clearedTimer = 0;
+        let leaderboardData = [];
+        let userRank = -1;
+
+        // Tile grid system:
+        // Tiles are sized directly from song beat distances.
+        // Screen scrolls at constant speed independent of note spacing.
+
+        let tiles = [];       // generated tiles list
+        let particles = [];
+        let gameOverTimer = 0;
+        let failedTile = null;
+        let menuPulse = 0;
+        let beatPulse = 0;
+        let tileSpeed = 0;    // constant speed set on play
+        let avgBeatDuration = 0.5;
+        let lastBlackCol = -1;
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  TILE SYSTEM — pre-scheduled from Rush E chart
+        // ═══════════════════════════════════════════════════════════════════
+        function generateTileGrid() {
+            tiles = [];
+            tileSpeed = H * 0.8;
+
+            for (let i = 0; i < beatMap.length; i++) {
+                const note = beatMap[i];
+
+                // Detection: if there's a significant gap to the NEXT note in the song, make it a HOLD
+                const nextNote = beatMap[i + 1];
+                const gap = nextNote ? (nextNote.t - note.t) : 1.0;
+
+                let isHold = gap > 0.35; // Threshold for a hold tile (0.35s)
+                let duration = 0.15;
+
+                // Find next note in SAME column for visual gap logic
+                let nextInLane = null;
+                for (let j = i + 1; j < beatMap.length; j++) {
+                    if (beatMap[j].c === note.c) {
+                        nextInLane = beatMap[j];
+                        break;
+                    }
+                }
+
+                if (isHold) {
+                    // For holds, we want it to be longer, but still leave a gap before any next same-lane tile
+                    const maxHoldDur = nextInLane ? (nextInLane.t - note.t) * 0.8 : 1.2;
+                    duration = Math.min(gap * 0.9, maxHoldDur, 1.2);
+                } else if (nextInLane) {
+                    const lGap = nextInLane.t - note.t;
+                    duration = Math.min(0.15, lGap * 0.7);
+                }
+
+                tiles.push({
+                    index: i,
+                    blackCol: note.c,
+                    beatStart: note.t,
+                    beatEnd: note.t + duration,
+                    freq: note.f,
+                    tapped: false,
+                    tapScale: 0,
+                    isHold: isHold,
+                    holding: false,
+                    holdScoreTimer: 0
+                });
+            }
+        }
+
+        // Get exact tile Y boundaries based purely on time
+        function getTileYBottom(tile, songTime) {
+            return HIT_Y + (songTime - tile.beatStart) * tileSpeed;
+        }
+
+        function getTileYTop(tile, songTime) {
+            return HIT_Y + (songTime - tile.beatEnd) * tileSpeed;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  PARTICLES
+        // ═══════════════════════════════════════════════════════════════════
+        function spawnParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const spd = 2 + Math.random() * 5;
+                particles.push({
+                    x, y,
+                    vx: Math.cos(angle) * spd,
+                    vy: Math.sin(angle) * spd - 2,
+                    life: 1.0,
+                    decay: 0.02 + Math.random() * 0.03,
+                    size: 3 + Math.random() * 5,
+                    color
+                });
+            }
+        }
+
+        function updateParticles(dt) {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.15;
+                p.life -= p.decay;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  DRAWING
+        // ═══════════════════════════════════════════════════════════════════
+        function drawBackground() {
+            // Clean white background
+            ctx.fillStyle = '#f5f5f5';
+            ctx.fillRect(0, 0, W, H);
+        }
+
+        function drawColumnLines() {
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+            ctx.lineWidth = 1;
+            for (let i = 1; i < COLS; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * colW, 0);
+                ctx.lineTo(i * colW, H);
+                ctx.stroke();
+            }
+        }
+
+        function drawHitLine() {
+            // No visible hit line — keep it clean like original Piano Tiles
+        }
+
+        function drawTiles(songTime) {
+            for (const tile of tiles) {
+                const yBottom = getTileYBottom(tile, songTime);
+
+                // Normal tiles are identical in height
+                let h = rowH;
+                let yTop = yBottom - rowH;
+
+                if (tile.isHold) {
+                    yTop = getTileYTop(tile, songTime);
+                    h = Math.max(rowH, yBottom - yTop);
+                }
+
+                const y = yTop;
+
+                // Skip if completely off screen
+                if (y > H || yBottom < 0) continue;
+
+                const x = tile.blackCol * colW;
+
+                if (tile.tapped) {
+                    if (tile.isHold) {
+                        // Tapped hold tile gradient
+                        const remainingTail = Math.max(0, HIT_Y - yTop);
+                        if (remainingTail > 0) {
+                            const grad = ctx.createLinearGradient(0, yTop, 0, yTop + remainingTail);
+                            grad.addColorStop(0, tile.holding ? '#aaa' : '#ccc');
+                            grad.addColorStop(1, tile.holding ? '#666' : '#999');
+                            ctx.fillStyle = grad;
+                            ctx.fillRect(x, yTop, colW, remainingTail);
+                        }
+                    } else {
+                        // Standard Tapped fade
+                        const scale = tile.tapScale;
+                        if (scale > 0) {
+                            ctx.fillStyle = `rgba(136, 136, 136, ${scale * 0.5})`;
+                            ctx.fillRect(x, yBottom - rowH, colW, rowH);
+                        }
+                    }
+                } else if (tile === failedTile) {
+                    // Failed tile — red
+                    ctx.fillStyle = '#ef4444';
+                    ctx.fillRect(x, y, colW, h);
+                } else {
+                    if (tile.isHold) {
+                        // Untapped Hold Tile Gradient
+                        const grad = ctx.createLinearGradient(0, yTop, 0, yBottom);
+                        grad.addColorStop(0, '#555');    // Lighter top
+                        grad.addColorStop(1, '#111');    // Dark bottom (hit point)
+                        ctx.fillStyle = grad;
+                        ctx.fillRect(x, y, colW, h);
+                    } else {
+                        // Active uniform black tile
+                        ctx.fillStyle = '#1a1a1a';
+                        ctx.fillRect(x, yBottom - rowH, colW, rowH);
+                    }
+                }
+            }
+        }
+
+        function drawVisualizer() {
+            // Minimal visualizer — subtle bottom bars
+            if (!analyserNode || !frequencyData) return;
+            analyserNode.getByteFrequencyData(frequencyData);
+            const barCount = 32;
+            const barW = W / barCount;
+            const maxBarH = H * 0.04;
+            ctx.save();
+            for (let i = 0; i < barCount; i++) {
+                const idx = Math.floor(i * frequencyData.length / barCount);
+                const val = frequencyData[idx] / 255;
+                const barH = val * maxBarH;
+                ctx.fillStyle = `rgba(0, 0, 0, ${0.03 + val * 0.06})`;
+                ctx.fillRect(i * barW, H - barH, barW - 1, barH);
+            }
+            ctx.restore();
+        }
+
+        function drawMenu() {
+            menuPulse += 0.03;
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+
+
+            const best = localStorage.getItem('pianotiles_best') || 0;
+            if (best > 0) {
+                ctx.font = '700 0.9rem Outfit';
+                ctx.fillStyle = '#e67e22'; // Subtle orange
+                ctx.fillText(`BEST SCORE: ${best}`, W / 2, H * 0.28);
+            }
+
+            ctx.font = '900 2.5rem Outfit';
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillText('PIANO TILES', W / 2, H * 0.35);
+
+            ctx.font = '400 1rem Outfit';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.fillText("Tap the tiles in sync with the music!", W / 2, H * 0.42);
+
+            if (!songReady) {
+                ctx.font = '700 1rem Outfit';
+                ctx.fillStyle = '#555';
+                const pct = Math.floor(loadProgress * 100);
+                ctx.fillText(`Loading Song (1.5Mb)... ${pct}%`, W / 2, H * 0.55);
+
+                const barW = 180, barH = 6;
+                ctx.fillStyle = 'rgba(0,0,0,0.08)';
+                ctx.beginPath();
+                ctx.roundRect(W / 2 - barW / 2, H * 0.59, barW, barH, 3);
+                ctx.fill();
+                ctx.fillStyle = '#1a1a1a';
+                ctx.beginPath();
+                ctx.roundRect(W / 2 - barW / 2, H * 0.59, barW * loadProgress, barH, 3);
+                ctx.fill();
+            } else {
+                const btnY = H * 0.55;
+                const btnW = 220, btnH = 60;
+                const pulse = Math.sin(menuPulse) * 0.05 + 1;
+
+                ctx.save();
+                ctx.translate(W / 2, btnY);
+                ctx.scale(pulse, pulse);
+                ctx.shadowColor = 'rgba(0,0,0,0.2)';
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.roundRect(-btnW / 2, -btnH / 2, btnW, btnH, 16);
+                ctx.fillStyle = '#1a1a1a';
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.font = '700 1.3rem Outfit';
+                ctx.fillStyle = '#fff';
+                ctx.fillText('TAP TO PLAY', 0, 2);
+                ctx.restore();
+            }
+
+
+
+            // LEADERBOARD TOP 5
+            if (leaderboardData && leaderboardData.length > 0) {
+                const startY = H * 0.72;
+                ctx.font = '900 0.9rem Outfit';
+                ctx.fillStyle = '#333';
+                ctx.fillText('LEADERBOARD', W / 2, startY - 25);
+
+                ctx.font = '400 0.85rem Outfit';
+                leaderboardData.forEach((entry, idx) => {
+                    const name = entry.user.first_name || "Unknown";
+                    const score = entry.score;
+                    const rank = entry.position;
+                    ctx.fillStyle = rank === userRank ? '#e67e22' : 'rgba(0,0,0,0.6)';
+                    ctx.fillText(`${rank}. ${name}: ${score}`, W / 2, startY + (idx * 20));
+                });
+
+                if (userRank > 5) {
+                    ctx.font = '700 0.85rem Outfit';
+                    ctx.fillStyle = '#e67e22';
+                    ctx.fillText(`Your Rank: #${userRank}`, W / 2, startY + 110);
+                }
+            }
+
+            ctx.restore();
+        }
+
+        function drawGameOver() {
+            const alpha = Math.min(0.85, (Date.now() - gameOverTimer) / 500);
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.fillRect(0, 0, W, H);
+            if (Date.now() - gameOverTimer < 200) return;
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            ctx.font = '900 2.8rem Outfit';
+            ctx.fillStyle = '#ef4444';
+            ctx.fillText('GAME OVER', W / 2, H * 0.3);
+
+            ctx.font = '900 4rem Outfit';
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillText(score, W / 2, H * 0.42);
+
+            ctx.font = '400 1rem Outfit';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.fillText('Score', W / 2, H * 0.48);
+
+            const best = localStorage.getItem('pianotiles_best') || 0;
+            if (score > best) {
+                localStorage.setItem('pianotiles_best', score);
+                ctx.font = '700 1.2rem Outfit';
+                ctx.fillStyle = '#1a1a1a';
+                ctx.fillText('🎉 NEW BEST! 🎉', W / 2, H * 0.62);
+            } else {
+                ctx.font = '700 1rem Outfit';
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+                ctx.fillText(`Best: ${best}`, W / 2, H * 0.62);
+            }
+
+            ctx.restore();
+        }
+
+        function drawLevelCleared() {
+            const alpha = Math.min(0.8, (Date.now() - clearedTimer) / 500);
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.fillRect(0, 0, W, H);
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            ctx.font = '900 3rem Outfit';
+            ctx.fillStyle = '#22c55e'; // Green
+            ctx.fillText('LEVEL CLEARED', W / 2, H * 0.4);
+
+            ctx.font = '700 1.5rem Outfit';
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillText(`Next: Level ${currentLevel + 1}`, W / 2, H * 0.5);
+
+            ctx.font = '400 1rem Outfit';
+            const speedText = (gameSpeed * 1.25).toFixed(2);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.fillText(`Speed: ${speedText}x`, W / 2, H * 0.55);
+
+            ctx.restore();
+        }
+
+        // Decorative menu tiles
+        let menuTiles = [];
+        let menuTilesInit = false;
+        function initMenuTiles() {
+            menuTiles = [];
+            const n = Math.ceil(H / rowH) + 2;
+            for (let i = 0; i < n; i++) {
+                menuTiles.push({ y: i * rowH, blackCol: Math.floor(Math.random() * COLS) });
+            }
+            menuTilesInit = true;
+        }
+        function drawMenuTiles() {
+            if (!menuTilesInit) initMenuTiles();
+            for (const t of menuTiles) {
+                t.y += 0.5;
+                if (t.y > H + rowH) {
+                    t.y -= menuTiles.length * rowH;
+                    t.blackCol = Math.floor(Math.random() * COLS);
+                }
+            }
+            ctx.save();
+            ctx.globalAlpha = 0.06;
+            menuTiles.forEach(t => {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(t.blackCol * colW, t.y, colW, rowH);
+            });
+            ctx.restore();
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  GAME LOGIC
+        // ═══════════════════════════════════════════════════════════════════
+        function startGame() {
+            if (!songReady) return;
+            initAudio();
+            resetScoreSync();
+
+            score = 0;
+            currentLevel = 1;
+            gameSpeed = 1.0;
+            particles = [];
+            failedTile = null;
+            beatPulse = 0;
+            gameTime = 0; // Reset game clock
+            prevSongTime = 0;
+
+            generateTileGrid();
+
+            gameState = STATE.PLAYING;
+            scoreHud.innerText = '0';
+            scoreHud.style.opacity = '1';
+            progressBarContainer.style.opacity = '1';
+            updateProgressBarColor();
+
+            playSong();
+        }
+
+        function updateProgressBarColor() {
+            const color = LEVEL_COLORS[(currentLevel - 1) % LEVEL_COLORS.length];
+            progressBar.style.backgroundColor = color;
+        }
+
+        function updateProgressBar() {
+            if (!songBuffer || !songBuffer.duration) return;
+            const prog = (getSongTime() / songBuffer.duration) * 100;
+            progressBar.style.width = Math.min(100, prog) + '%';
+        }
+
+        function skipLevel() {
+            onLevelCleared();
+        }
+
+        function onLevelCleared() {
+            gameState = STATE.CLEARED;
+            clearedTimer = Date.now();
+            stopSong();
+        }
+
+        function nextLevel() {
+            currentLevel++;
+            gameSpeed *= 1.25;
+            generateTileGrid();
+            gameState = STATE.PLAYING;
+            updateProgressBarColor();
+            progressBar.style.width = '0%';
+            playSong();
+        }
+
+        function endGame(tile) {
+            gameState = STATE.GAMEOVER;
+            gameOverTimer = Date.now();
+            failedTile = tile;
+            playMissSound();
+            stopSong();
+            progressBarContainer.style.opacity = '0';
+            submitScore(score);
+        }
+
+        function getNextUntappedTile() {
+            for (const tile of tiles) {
+                if (!tile.tapped) return tile;
+            }
+            return null;
+        }
+
+        function handleTap(x, y) {
+            if (gameState === STATE.MENU) {
+                startGame();
+                return;
+            }
+            if (gameState === STATE.GAMEOVER) {
+                if (Date.now() - gameOverTimer > 1000) gameState = STATE.MENU;
+                return;
+            }
+            if (gameState === STATE.CLEARED) return;
+            if (gameState !== STATE.PLAYING) return;
+
+            const col = Math.floor(x / colW);
+            if (col < 0 || col >= COLS) return;
+
+            // Prioritize tracking the next *required* tile to press over absolute screen Y checks
+            // This grants high forgiveness for vertical tapping position, focusing only on hitting the lowest active column correctly avoiding instant game overs.
+            const targetTile = getNextUntappedTile();
+            if (!targetTile) return;
+
+            if (col === targetTile.blackCol) {
+                // Correctly tapped the sequence!
+                targetTile.tapped = true;
+                targetTile.tapScale = 1.0;
+
+                if (targetTile.isHold) {
+                    targetTile.holding = true;
+                }
+
+                score++;
+                scoreHud.innerText = score;
+                scoreHud.style.transform = 'scale(1.15)';
+                setTimeout(() => scoreHud.style.transform = 'scale(1)', 100);
+
+                // Play the specific note mapped to this tile!
+                playTapSound(col, targetTile.freq);
+
+                const songTime = getSongTime();
+                const px = col * colW + colW / 2;
+                const py = Math.min(getTileYBottom(targetTile, songTime) - 30, HIT_Y);
+                const colors = ['#000', '#444', '#888'];
+                spawnParticles(px, py, colors[Math.floor(Math.random() * colors.length)], 6);
+            } else {
+                // Wrong sequence column clicked—game over
+                targetTile._failCol = col;
+                endGame(targetTile);
+            }
+        }
+
+        function handleRelease(x, y) {
+            // Cancel active hold for any tiles currently being held
+            for (const tile of tiles) {
+                if (tile.holding) {
+                    tile.holding = false;
+                }
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  MAIN LOOP
+        // ═══════════════════════════════════════════════════════════════════
+        const FIXED_DT = 1000 / 60;
+        let accumulator = 0;
+        let lastTime = 0;
+
+        function update() {
+            if (gameState === STATE.CLEARED) {
+                if (Date.now() - clearedTimer > 2500) {
+                    nextLevel();
+                }
+                return;
+            }
+            if (gameState !== STATE.PLAYING) return;
+
+            updateProgressBar();
+
+            const songTime = getSongTime();
+
+            // Detect backwards song jump resetting the run (loop safety if for some reason it loops)
+            if (songTime < prevSongTime - 1 && songTime > 0.1) {
+                generateTileGrid();
+            }
+            prevSongTime = songTime;
+
+            for (const tile of tiles) {
+                // Animate fade scales
+                if (tile.tapped && tile.tapScale > 0) {
+                    tile.tapScale -= 0.04;
+                }
+
+                // Append running points for actively held down tiles
+                if (tile.holding) {
+                    tile.holdScoreTimer++;
+                    if (tile.holdScoreTimer > 10) { // Adds 6 pts/sec
+                        score++;
+                        scoreHud.innerText = score;
+                        tile.holdScoreTimer = 0;
+
+                        const px = tile.blackCol * colW + colW / 2;
+                        spawnParticles(px, HIT_Y, ['#fff', '#666'], 2);
+                    }
+
+                    // Auto-release holding if tile runs its course below hit line
+                    const yTop = getTileYTop(tile, songTime);
+                    if (yTop > HIT_Y) {
+                        tile.holding = false;
+                    }
+                }
+            }
+
+            // Monitor dropping limits
+            const currentTile = getNextUntappedTile();
+            if (currentTile) {
+                const yBot = getTileYBottom(currentTile, songTime);
+                if (yBot > HIT_Y + rowH * 1.5) { // Very generous boundary below line
+                    endGame(currentTile);
+                    return;
+                }
+            }
+
+            // Memory clearing passed tiles
+            tiles = tiles.filter(t => {
+                if (!t.tapped) return true;
+                const yTop = getTileYTop(t, songTime);
+                return yTop < H + rowH; // Persist till fully wiped off buffer
+            });
+
+            // Beat pulse decay
+            if (beatPulse > 0) {
+                beatPulse -= 0.04;
+                if (beatPulse < 0) beatPulse = 0;
+            }
+
+            updateParticles();
+        }
+
+        function draw() {
+            drawBackground();
+            drawColumnLines();
+
+            if (gameState === STATE.PLAYING || gameState === STATE.GAMEOVER) {
+                drawTiles(getSongTime());
+                drawVisualizer();
+                drawParticles();
+            }
+
+            if (gameState === STATE.MENU) {
+                drawMenuTiles();
+                drawMenu();
+            }
+
+            if (gameState === STATE.GAMEOVER) {
+                drawGameOver();
+            }
+
+            if (gameState === STATE.CLEARED) {
+                drawLevelCleared();
+            }
+        }
+
+        function loop(timestamp) {
+            requestAnimationFrame(loop);
+            if (!timestamp) return;
+            if (!lastTime) lastTime = timestamp;
+            let dt = timestamp - lastTime;
+            lastTime = timestamp;
+            if (dt > 100) dt = FIXED_DT;
+            accumulator += dt;
+            while (accumulator >= FIXED_DT) {
+                update();
+                accumulator -= FIXED_DT;
+            }
+            draw();
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  INPUT
+        // ═══════════════════════════════════════════════════════════════════
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                handleTap(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                handleRelease(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('mousedown', (e) => {
+            handleTap(e.clientX, e.clientY);
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            handleRelease(e.clientX, e.clientY);
+        });
+
+        document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  INIT
+        // ═══════════════════════════════════════════════════════════════════
+        loadAndAnalyzeSong();
+        requestAnimationFrame(loop);
+    </script>
+</body>
+
+</html>

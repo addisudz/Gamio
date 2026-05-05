@@ -61,6 +61,7 @@ from hear_me_out import HearMeOutGame
 from name_the_player import NameThePlayerGame
 from settings_manager import settings_manager
 from uno_game import UnoGame, CARD_STICKERS as UNO_STICKERS, STICKERS_GREY as UNO_STICKERS_GREY, STICKER_TO_CARD as UNO_STICKER_TO_CARD, COLOR_NAMES as UNO_COLOR_NAMES, COLORS as UNO_COLORS
+from who_am_i import WhoAmIGame
 from leaderboard import (
     record_game_scores,
     get_total_leaderboard,
@@ -414,7 +415,7 @@ GAME_CATEGORIES = {
         "games": [("16", "Guess the Song"), ("12", "What You Meme")]
     },
     "Party Games": {
-        "games": [("3", "Guess the Imposter"), ("15", "20 Questions"), ("21", "Hear Me Out")]
+        "games": [("3", "Guess the Imposter"), ("15", "20 Questions"), ("21", "Hear Me Out"), ("25", "Who Am I")]
     },
     "Card Games": {
         "games": [("17", "Crazy 8"), ("24", "UNO")]
@@ -445,7 +446,8 @@ GAMES_METADATA = {
     "21": ("Hear Me Out", "2"),
     "22": ("Name the Player", "2"),
     "23": ("Movie Scene", "2"),
-    "24": ("UNO", "2")
+    "24": ("UNO", "2"),
+    "25": ("Who Am I", "2")
 }
 
 # Game Cover Images
@@ -471,7 +473,8 @@ GAME_COVERS = {
     "21": "Hear Me Out.png",
     "22": "Name the Player.png",
     "23": "Movie Scene.png",
-    "24": "Uno.png"
+    "24": "Uno.png",
+    "25": "Who Am I.png"
 }
 
 
@@ -934,7 +937,8 @@ async def handle_game_menu_callback(update: Update, context: ContextTypes.DEFAUL
 def get_game_instructions(game_code: str) -> str:
     """Get the How to Play instructions for a game."""
     instructions = {
-        "1": "<blockquote expandable><b>How to Play:</b>\n‣ Rearrange the letters to form a correct word.\n‣ Type your answer and send it in the chat.\n‣ Each correct answer earns you points.\n‣ The player with the highest score wins.</blockquote>"
+        "1": "<blockquote expandable><b>How to Play:</b>\n‣ Rearrange the letters to form a correct word.\n‣ Type your answer and send it in the chat.\n‣ Each correct answer earns you points.\n‣ The player with the highest score wins.</blockquote>",
+        "25": "<blockquote expandable><b>How to Play:</b>\n‣ Everyone gets a celebrity assigned to them.\n‣ On your turn, others see who you are, but you don't.\n‣ Ask questions in the group to guess your celebrity.\n‣ Once you know, type the name in the chat.\n‣ Shortest time to guess wins!</blockquote>"
     }
     return instructions.get(game_code, "")
 
@@ -1208,8 +1212,104 @@ async def start_game_after_delay(chat_id: int, context: ContextTypes.DEFAULT_TYP
         elif session.game_code == "24":
             # UNO
             await start_uno_game(chat_id, context, session)
+        elif session.game_code == "25":
+            # Who Am I
+            await start_who_am_i_game(chat_id, context, session)
 
 
+
+
+async def start_who_am_i_game(chat_id: int, context: ContextTypes.DEFAULT_TYPE, session) -> None:
+    """Start the Who Am I game."""
+    if not session.game.start_game():
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="❌ Could not start game. Not enough players or characters.",
+            parse_mode="HTML"
+        )
+        session.end_game()
+        game_manager.remove_game(chat_id)
+        return
+    
+    turn_names = [session.game.players.get(pid, "Unknown") for pid in session.game.turn_order]
+    order_str = " ➔ ".join(turn_names)
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=f"🎭 <b>Who Am I?</b>\n\nTurn order: {order_str}\n\nLet's begin!",
+        parse_mode="HTML"
+    )
+    await play_who_am_i_turn(chat_id, context, session)
+
+async def play_who_am_i_turn(chat_id: int, context: ContextTypes.DEFAULT_TYPE, session) -> None:
+    current_id = session.game.get_current_player_id()
+    if not current_id:
+        board = session.game.get_leaderboard()
+        board_text = "\n".join([f"{i+1}. {session.game.players.get(pid, 'Unknown')} - {t:.1f}s" for i, (pid, t) in enumerate(board)])
+        if not board_text:
+            board_text = "No one guessed correctly!"
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=f"🏁 <b>Game Over!</b>\n\nLeaderboard:\n{board_text}",
+            parse_mode="HTML"
+        )
+        session.end_game()
+        game_manager.remove_game(chat_id)
+        return
+        
+    current_name = session.game.get_current_player_name()
+    
+    max_swaps = 5
+    for _ in range(max_swaps):
+        assigned_char = session.game.get_character_for_player(current_id)
+        
+        # 1. Pre-check if file is readable
+        try:
+            with open(assigned_char['image'], 'rb') as f:
+                pass
+        except Exception as e:
+            logger.error(f"Image file unreadable ({assigned_char['name']}): {e}")
+            if session.game.swap_character(current_id): continue
+            else: break
+            
+        file_error_occurred = False
+        
+        # 2. Send character to everyone else
+        for pid in session.game.turn_order:
+            if pid != current_id:
+                try:
+                    with open(assigned_char['image'], 'rb') as f:
+                        await context.bot.send_photo(
+                            chat_id=pid,
+                            photo=f,
+                            caption=f"🤫 It's {current_name}'s turn. They are:\n\n<b>{assigned_char['name']}</b>",
+                            parse_mode="HTML"
+                        )
+                except Exception as e:
+                    err_msg = str(e)
+                    logger.error(f"Failed to DM {pid}: {err_msg}")
+                    # If Telegram fails to process the image, it's a file issue
+                    if "Image_process_failed" in err_msg:
+                        file_error_occurred = True
+                        break 
+        
+        if file_error_occurred:
+            logger.warning(f"Telegram failed to process image for {assigned_char['name']}. Swapping...")
+            if session.game.swap_character(current_id):
+                continue
+            else:
+                break
+        else:
+            # If we reached here, either it sent or it failed for reasons unrelated to the image itself
+            break
+                
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=f"<b>👉 {current_name}'s turn</b>\n\n"
+             f"<blockquote>Ask questions in this group to figure out who you are. Then guess the name!</blockquote>",
+        parse_mode="HTML"
+    )
+    
+    session.game.start_turn()
 
 
 async def start_hear_me_out_game(chat_id: int, context: ContextTypes.DEFAULT_TYPE, session) -> None:
@@ -1869,7 +1969,18 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
                          # If it was a card format but invalid, show error
                          await message.reply_text(f"⚠️ {msg_text}", parse_mode="HTML")
 
-
+        # Handle Who Am I Game
+        elif session.game_code == "25":
+            if session.game.check_guess(user.id, message.text):
+                time_taken = session.game.completion_times[user.id]
+                assigned_char = session.game.get_character_for_player(user.id)
+                await message.reply_text(
+                    f"🎉 Correct! You are <b>{assigned_char['name']}</b>!\n"
+                    f"Time: {time_taken:.1f} seconds.",
+                    parse_mode="HTML"
+                )
+                session.game.next_turn()
+                await play_who_am_i_turn(chat.id, context, session)
 
 async def reveal_word_after_delay(chat_id: int, context: ContextTypes.DEFAULT_TYPE, round_num: int, delay: int) -> None:
     """Reveal the word if no one answers within the delay."""
@@ -1945,7 +2056,7 @@ async def join_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
     
     # Add player
-    if session.game_code == "3":
+    if session.game_code in ["3", "25"]:
         try:
             # Check if we can send message to user
             await context.bot.send_chat_action(chat_id=user.id, action="typing")

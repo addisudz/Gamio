@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Tuple
 logger = logging.getLogger(__name__)
 
 # ── Add mau_mau_bot to path so its internal imports resolve ──────────────────
-_MAU_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+_MAU_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
                          "mau_mau_bot")
 if _MAU_PATH not in sys.path:
     sys.path.insert(0, _MAU_PATH)

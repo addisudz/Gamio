@@ -1588,6 +1588,11 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         elif session.game_code == "4":
             if session.game.check_answer(user.id, message.text):
                 # Correct answer
+                try:
+                    await message.set_reaction(reaction=[ReactionTypeEmoji(emoji="🎉")])
+                except Exception:
+                    pass
+                    
                 score = session.game.scores.get(user.id, 0)
                 answer = session.game.current_answer
                 
@@ -2837,14 +2842,48 @@ async def start_logo_round(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> 
         turn_text = f"👉 It's <a href=\"tg://user?id={current_player_id}\">{player_name}</a>'s turn!"
 
     try:
-        with open(logo_path, 'rb') as f:
+        import io
+        import os
+        if logo_path.lower().endswith('.svg'):
+            try:
+                # Fix for Homebrew cairo on Mac
+                if os.path.exists('/opt/homebrew/lib'):
+                    if 'DYLD_LIBRARY_PATH' not in os.environ:
+                        os.environ['DYLD_LIBRARY_PATH'] = '/opt/homebrew/lib'
+                    elif '/opt/homebrew/lib' not in os.environ['DYLD_LIBRARY_PATH']:
+                        os.environ['DYLD_LIBRARY_PATH'] += ':/opt/homebrew/lib'
+
+                import cairosvg
+                png_data = cairosvg.svg2png(url=logo_path)
+                photo_file = io.BytesIO(png_data)
+                photo_file.name = "logo.png"
+            except Exception as svg_err:
+                logger.error(f"SVG conversion failed: {svg_err}")
+                # Fallback: send as document
+                with open(logo_path, 'rb') as f:
+                    await context.bot.send_document(
+                        chat_id=chat_id,
+                        document=f,
+                        caption=f"<b>Guess the Logo</b>\n\n"
+                                f"<i>{turn_text} ⏳{time_limit}s</i>",
+                        parse_mode="HTML"
+                    )
+                # Start timeout task even for document
+                track_game_task(chat_id, asyncio.create_task(logo_timeout(chat_id, context, round_num)))
+                return
+        else:
+            photo_file = open(logo_path, 'rb')
+            
+        try:
             await context.bot.send_photo(
                 chat_id=chat_id,
-                photo=f,
-                caption=f"🖼️ <b>Guess the Logo!</b>\n\n"
-                        f"{turn_text} ({time_limit}s)",
+                photo=photo_file,
+                caption=f"<b>Guess the Logo</b>\n\n"
+                        f"<i>{turn_text} ⏳{time_limit}s</i>",
                 parse_mode="HTML"
             )
+        finally:
+            photo_file.close()
     except Exception as e:
         logger.error(f"Error sending logo: {e}")
         await context.bot.send_message(chat_id=chat_id, text="⚠️ Error loading logo. Skipping round...")

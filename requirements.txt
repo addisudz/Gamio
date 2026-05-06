@@ -4,4 +4,4 @@ flask
 Pillow
 numpy
 google-generativeai
-supabase
+supabasecairosvg

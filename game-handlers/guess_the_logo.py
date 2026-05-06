@@ -52,7 +52,7 @@ class GuessTheLogoGame:
 
         for root, _, files in os.walk(logo_dir):
             for filename in files:
-                if filename.lower().endswith(('.webp', '.png', '.jpg', '.jpeg')):
+                if filename.lower().endswith(('.webp', '.png', '.jpg', '.jpeg', '.svg')):
                     clean_name = os.path.splitext(filename)[0]
                     cat = categories.get(filename, ["Global"])[0]
                     self.logos.append((os.path.join(root, filename), clean_name, cat))

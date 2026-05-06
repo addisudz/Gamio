@@ -60,7 +60,6 @@ from guess_addis import GuessAddisGame
 from hear_me_out import HearMeOutGame
 from name_the_player import NameThePlayerGame
 from settings_manager import settings_manager
-from uno_game import UnoGame, CARD_STICKERS as UNO_STICKERS, STICKERS_GREY as UNO_STICKERS_GREY, STICKER_TO_CARD as UNO_STICKER_TO_CARD, COLOR_NAMES as UNO_COLOR_NAMES, COLORS as UNO_COLORS
 from who_am_i import WhoAmIGame
 from leaderboard import (
     record_game_scores,
@@ -418,7 +417,7 @@ GAME_CATEGORIES = {
         "games": [("3", "Guess the Imposter"), ("15", "20 Questions"), ("21", "Hear Me Out"), ("25", "Who Am I")]
     },
     "Card Games": {
-        "games": [("17", "Crazy 8"), ("24", "UNO")]
+        "games": [("17", "Crazy 8")]
     }
 }
 
@@ -446,7 +445,6 @@ GAMES_METADATA = {
     "21": ("Hear Me Out", "2"),
     "22": ("Name the Player", "2"),
     "23": ("Movie Scene", "2"),
-    "24": ("UNO", "2"),
     "25": ("Who Am I", "2")
 }
 
@@ -473,7 +471,6 @@ GAME_COVERS = {
     "21": "Hear Me Out.png",
     "22": "Name the Player.png",
     "23": "Movie Scene.png",
-    "24": "Uno.png",
     "25": "Who Am I.png"
 }
 
@@ -807,7 +804,7 @@ async def handle_game_menu_callback(update: Update, context: ContextTypes.DEFAUL
         await query.answer()
         
     elif data.startswith("opt_"):
-        if data in ["opt_done_1", "opt_done_2", "opt_done_3"]:
+        if data in ["opt_done_1", "opt_done_2", "opt_done_3", "opt_done_4"]:
             session.is_configuring = False
             await query.edit_message_reply_markup(reply_markup=get_options_markup(session))
             await query.answer("Options saved.")
@@ -838,6 +835,22 @@ async def handle_game_menu_callback(update: Update, context: ContextTypes.DEFAUL
         elif data.startswith("opt_1_rt_"):
             val = int(data.split("_")[-1])
             session.game.reveal_time = val
+            await query.edit_message_reply_markup(reply_markup=get_options_markup(session))
+            await query.answer()
+        elif data.startswith("opt_4_md_"):
+            mode = data.split("_")[-1]
+            session.game.mode = mode
+            await query.edit_message_reply_markup(reply_markup=get_options_markup(session))
+            await query.answer()
+        elif data.startswith("opt_4_tm_"):
+            val = int(data.split("_")[-1])
+            session.game.time_limit = val
+            await query.edit_message_reply_markup(reply_markup=get_options_markup(session))
+            await query.answer()
+        elif data.startswith("opt_4_ct_"):
+            cat_map = {"0": "All", "1": "Ethiopian", "2": "Tech", "3": "Cars"}
+            val = data.split("_")[-1]
+            session.game.category_filter = cat_map.get(val, "All")
             await query.edit_message_reply_markup(reply_markup=get_options_markup(session))
             await query.answer()
             
@@ -882,7 +895,6 @@ async def handle_game_menu_callback(update: Update, context: ContextTypes.DEFAUL
                 "21": ("Hear Me Out", "2"),
                 "22": ("Name the Player", "2"),
                 "23": ("Movie Scene", "2"),
-                "24": ("UNO", "2")
             }
             
             game_name, min_players = game_info.get(game_code, ("General Knowledge", "2"))
@@ -945,7 +957,7 @@ def get_game_instructions(game_code: str) -> str:
 
 def get_options_markup(session) -> Optional[InlineKeyboardMarkup]:
     """Get the inline keyboard for game options."""
-    if not session or session.game_code not in ["1", "2", "3"]:
+    if not session or session.game_code not in ["1", "2", "3", "4"]:
         return None
         
     if not getattr(session, 'is_configuring', False):
@@ -1013,6 +1025,41 @@ def get_options_markup(session) -> Optional[InlineKeyboardMarkup]:
                 InlineKeyboardButton("3", callback_data="opt_3_ni_3", api_kwargs={"style": "success"} if ni==3 else {})
             ],
             [InlineKeyboardButton("⬅", callback_data="opt_done_3", api_kwargs={"style": "primary"})]
+        ]
+        return InlineKeyboardMarkup(keyboard)
+
+    elif session.game_code == "4":
+        mode = getattr(game, 'mode', 'first')
+        tm = getattr(game, 'time_limit', 60)
+        ct = getattr(game, 'category_filter', 'All')
+        
+        cat_val = "0"
+        if ct == "Ethiopian": cat_val = "1"
+        elif ct == "Tech": cat_val = "2"
+        elif ct == "Cars": cat_val = "3"
+        
+        keyboard = [
+            [InlineKeyboardButton("Play Mode:", callback_data="ignore_opt")],
+            [
+                InlineKeyboardButton("First to Answer", callback_data="opt_4_md_first", api_kwargs={"style": "success"} if mode=="first" else {}),
+                InlineKeyboardButton("By Turn", callback_data="opt_4_md_turn", api_kwargs={"style": "success"} if mode=="turn" else {})
+            ],
+            [InlineKeyboardButton("Time Limit:", callback_data="ignore_opt")],
+            [
+                InlineKeyboardButton("30s", callback_data="opt_4_tm_30", api_kwargs={"style": "success"} if tm==30 else {}),
+                InlineKeyboardButton("45s", callback_data="opt_4_tm_45", api_kwargs={"style": "success"} if tm==45 else {}),
+                InlineKeyboardButton("60s", callback_data="opt_4_tm_60", api_kwargs={"style": "success"} if tm==60 else {})
+            ],
+            [InlineKeyboardButton("Category:", callback_data="ignore_opt")],
+            [
+                InlineKeyboardButton("All", callback_data="opt_4_ct_0", api_kwargs={"style": "success"} if cat_val=="0" else {}),
+                InlineKeyboardButton("Ethiopian", callback_data="opt_4_ct_1", api_kwargs={"style": "success"} if cat_val=="1" else {})
+            ],
+            [
+                InlineKeyboardButton("Tech", callback_data="opt_4_ct_2", api_kwargs={"style": "success"} if cat_val=="2" else {}),
+                InlineKeyboardButton("Cars", callback_data="opt_4_ct_3", api_kwargs={"style": "success"} if cat_val=="3" else {})
+            ],
+            [InlineKeyboardButton("⬅", callback_data="opt_done_4", api_kwargs={"style": "primary"})]
         ]
         return InlineKeyboardMarkup(keyboard)
 
@@ -1209,9 +1256,6 @@ async def start_game_after_delay(chat_id: int, context: ContextTypes.DEFAULT_TYP
         elif session.game_code == "23":
             # Movie Scene
             await start_movie_scene_game(chat_id, context, session)
-        elif session.game_code == "24":
-            # UNO
-            await start_uno_game(chat_id, context, session)
         elif session.game_code == "25":
             # Who Am I
             await start_who_am_i_game(chat_id, context, session)
@@ -2782,15 +2826,23 @@ async def start_logo_round(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> 
         await end_game(chat_id, context, session)
         return
 
-    logo_path, round_num = result
+    logo_path, round_num, current_player_id = result
     
+    time_limit = getattr(session.game, 'time_limit', 60)
+    mode = getattr(session.game, 'mode', 'first')
+    
+    turn_text = "First to guess gets a point!"
+    if mode == "turn" and current_player_id:
+        player_name = session.game.players.get(current_player_id, "Player")
+        turn_text = f"👉 It's <a href=\"tg://user?id={current_player_id}\">{player_name}</a>'s turn!"
+
     try:
         with open(logo_path, 'rb') as f:
             await context.bot.send_photo(
                 chat_id=chat_id,
                 photo=f,
                 caption=f"🖼️ <b>Guess the Logo!</b>\n\n"
-                        f"First to guess gets a point! (60s)",
+                        f"{turn_text} ({time_limit}s)",
                 parse_mode="HTML"
             )
     except Exception as e:
@@ -2799,13 +2851,18 @@ async def start_logo_round(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> 
         await start_logo_round(chat_id, context)
         return
 
-    # Start timeout task (60 seconds)
+    # Start timeout task
     track_game_task(chat_id, asyncio.create_task(logo_timeout(chat_id, context, round_num)))
 
 
 async def logo_timeout(chat_id: int, context: ContextTypes.DEFAULT_TYPE, round_num: int) -> None:
     """Handle timeout for logo guess."""
-    await asyncio.sleep(60)
+    session = game_manager.get_game(chat_id)
+    if not session or session.game_code != "4":
+        return
+        
+    time_limit = getattr(session.game, 'time_limit', 60)
+    await asyncio.sleep(time_limit)
     
     session = game_manager.get_game(chat_id)
     if not session or session.game_code != "4":
@@ -4002,169 +4059,6 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await iq.answer(results, cache_time=0, is_personal=True)
         return
 
-    # 3. Handle UNO Cards
-    elif query_text.startswith("uno"):
-        session = None
-        for s in game_manager.active_games.values():
-            if user.id in s.players and s.game_code == "24":
-                session = s
-                break
-
-        if not session or not session.game:
-            results = [InlineQueryResultArticle(
-                id="uno_nogame",
-                title="You are not playing",
-                input_message_content=InputTextMessageContent("Not playing right now. Use /join to join the current game.")
-            )]
-            await iq.answer(results, cache_time=0, is_personal=True)
-            return
-
-        game = session.game
-        results = []
-
-        # Helper for game info text
-        def _get_uno_info(g):
-            cp_name = g.get_current_player_name()
-            last_card = g._card_display(g.last_card)
-            plist = []
-            for uid in g.players:
-                p_obj = g._player_map.get(uid)
-                n = len(p_obj.cards) if p_obj else 0
-                plist.append(f"{g.players[uid]} ({n} {'card' if n==1 else 'cards'})")
-            plist_str = " -> ".join(plist)
-            return InputTextMessageContent(f"Current player: {cp_name}\nLast card: {last_card}\nPlayers: {plist_str}")
-
-        # Game lobby
-        if session.state == GameState.JOINING:
-            if user.id == game.creator_id:
-                results.append(InlineQueryResultArticle(id="uno_mode_classic", title="🎻 Classic mode", input_message_content=InputTextMessageContent("Classic 🎻")))
-                results.append(InlineQueryResultArticle(id="uno_mode_fast", title="🚀 Sanic mode", input_message_content=InputTextMessageContent("Gotta go fast! 🚀")))
-                results.append(InlineQueryResultArticle(id="uno_mode_wild", title="🐉 Wild mode", input_message_content=InputTextMessageContent("Into the Wild~ 🐉")))
-            else:
-                results.append(InlineQueryResultArticle(id="uno_nogame", title="The game wasn't started yet", input_message_content=InputTextMessageContent("Start the game with /start")))
-            await iq.answer(results, cache_time=0, is_personal=True)
-            return
-
-        is_turn = (user.id == game.current_player_id)
-        player_obj = game._player_map.get(user.id)
-        hand = player_obj.cards if player_obj else []
-        info_imc = _get_uno_info(game)
-
-        # ── Color selection (only shown when it's your turn and choosing_color)
-        if is_turn and game.choosing_color:
-            color_opts = [
-                ("r", "❤️ Red",    "red"),
-                ("b", "💙 Blue",   "blue"),
-                ("g", "💚 Green",  "green"),
-                ("y", "💛 Yellow", "yellow"),
-            ]
-            for c_key, c_label, c_word in color_opts:
-                results.append(InlineQueryResultArticle(
-                    id=f"uno_color:{c_key}",
-                    title=c_label,
-                    description=f"Change color to {c_word}",
-                    input_message_content=InputTextMessageContent(c_label)
-                ))
-            # Show hand summary below (tapping sends game info)
-            hand_desc = ", ".join(repr(c) for c in hand)
-            results.append(InlineQueryResultArticle(
-                id="uno_hand_info",
-                title=f"Your cards ({len(hand)}):",
-                description=hand_desc,
-                input_message_content=info_imc
-            ))
-            await iq.answer(results, cache_time=0, is_personal=True)
-            return
-
-        # ── Determine which cards are playable for the current player
-        playable_strs = {str(c) for c in game.get_playable_cards(user.id)} if is_turn else set()
-
-        # ── Anticipation check for non-turn players:
-        # A card can be "anticipated" only if it exactly matches the last card
-        # (same color AND same value) — the player can interrupt to play it.
-        last_card = game.last_card
-        def is_anticipatable(card) -> bool:
-            if not last_card or not last_card.color:
-                return False
-            # Must match same color AND same value (no specials)
-            return (not card.special and
-                    card.color == last_card.color and
-                    card.value == last_card.value)
-
-        # ── After voluntary draw: show the full hand (not just drawn card)
-        # Player must pass after seeing they have nothing to play.
-        # (Matching mau_mau_bot: drew=True → cards[-1:] are shown as only playable
-        #  but we show all cards; only the last drawn one can be played)
-        display_hand = hand
-
-        for i, card in enumerate(sorted(display_hand)):
-            card_key = str(card)
-
-            if is_turn:
-                can_play = card_key in playable_strs
-                if can_play:
-                    fid = UNO_STICKERS.get(card_key)
-                    if fid:
-                        results.append(InlineQueryResultCachedSticker(
-                            id=f"uno_play:{card_key}:{i}", sticker_file_id=fid))
-                else:
-                    grey_fid = UNO_STICKERS_GREY.get(card_key)
-                    if grey_fid:
-                        results.append(InlineQueryResultCachedSticker(
-                            id=f"uno_grey:{card_key}:{i}", sticker_file_id=grey_fid,
-                            input_message_content=info_imc))
-                    else:
-                        results.append(InlineQueryResultArticle(
-                            id=f"uno_info:{card_key}:{i}",
-                            title=f"🚫 {game._card_display(card)}",
-                            input_message_content=info_imc))
-            else:
-                # Not my turn: show colored sticker only for anticipatable cards
-                if is_anticipatable(card):
-                    fid = UNO_STICKERS.get(card_key)
-                    if fid:
-                        # Colored sticker, no input_message_content → just sends the sticker
-                        results.append(InlineQueryResultCachedSticker(
-                            id=f"uno_grey:{card_key}:{i}", sticker_file_id=fid))
-                else:
-                    grey_fid = UNO_STICKERS_GREY.get(card_key)
-                    if grey_fid:
-                        results.append(InlineQueryResultCachedSticker(
-                            id=f"uno_grey:{card_key}:{i}", sticker_file_id=grey_fid,
-                            input_message_content=info_imc))
-                    else:
-                        results.append(InlineQueryResultArticle(
-                            id=f"uno_info:{card_key}:{i}",
-                            title=f"🚫 {game._card_display(card)}",
-                            input_message_content=info_imc))
-
-        # ── Special action options (only on your turn, not choosing color)
-        if is_turn and not game.choosing_color:
-            if not game.drew_this_turn:
-                # Haven't drawn yet: show draw option
-                n = game.draw_counter or 1
-                draw_fid = UNO_STICKERS.get("option_draw")
-                if draw_fid:
-                    results.append(InlineQueryResultCachedSticker(
-                        id="uno_draw", sticker_file_id=draw_fid,
-                        input_message_content=InputTextMessageContent(
-                            f"Drawing {n} {'card' if n==1 else 'cards'}")))
-            else:
-                # Already drew: show pass option only
-                pass_fid = UNO_STICKERS.get("option_pass")
-                if pass_fid:
-                    results.append(InlineQueryResultCachedSticker(
-                        id="uno_pass", sticker_file_id=pass_fid,
-                        input_message_content=InputTextMessageContent("Pass")))
-
-        # Game info sticker
-        info_fid = UNO_STICKERS.get("option_info")
-        if info_fid:
-            results.append(InlineQueryResultCachedSticker(id="uno_info", sticker_file_id=info_fid, input_message_content=info_imc))
-
-        await iq.answer(results, cache_time=0, is_personal=True)
-        return
-
 
 async def handle_sticker_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Detect card plays via stickers in Crazy 8."""
@@ -4175,11 +4069,6 @@ async def handle_sticker_message(update: Update, context: ContextTypes.DEFAULT_T
     user = update.effective_user
     chat = update.effective_chat
     session = game_manager.get_game(chat.id)
-
-    # UNO: card plays are processed in chosen_inline_result_handler (via result_id)
-    # The sticker arriving in chat is just for display; don't process it again here.
-    if session and session.game_code == "24":
-        return
 
     if not session or session.game_code != "17" or not session.game:
         return
@@ -4226,182 +4115,10 @@ async def handle_sticker_message(update: Update, context: ContextTypes.DEFAULT_T
 
 
 async def chosen_inline_result_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Track when a user picks a result from an inline query (meme or UNO draw)."""
+    """Track when a user picks a result from an inline query (meme)."""
     result    = update.chosen_inline_result
     result_id = result.result_id
     user      = result.from_user
-
-    # UNO card play
-    if result_id.startswith("uno_play:"):
-        card_key = result_id.split(":")[1]
-        session = None
-        chat_id = None
-        for cid, s in game_manager.active_games.items():
-            if user.id in s.players and s.game_code == "24":
-                session = s
-                chat_id = cid
-                break
-        if not session: return
-        success, msg, needs_color = session.game.play_card(user.id, card_key)
-        if not success:
-            await context.bot.send_message(chat_id=chat_id, text=f"⚠️ {msg}")
-            return
-        if msg: await context.bot.send_message(chat_id=chat_id, text=msg, parse_mode="HTML")
-        if session.game.game_over:
-            await end_game(chat_id, context, session)
-            return
-        if needs_color:
-            pid = user.id
-            name = session.game.players.get(pid, "Player")
-            mention = f'<a href="tg://user?id={pid}">{name}</a>'
-            keyboard = InlineKeyboardMarkup([[
-                InlineKeyboardButton("🎨 Choose a color", switch_inline_query_current_chat="uno")
-            ]])
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=f"{mention}, please choose a color:",
-                reply_markup=keyboard,
-                parse_mode="HTML"
-            )
-            return
-        await send_uno_turn_message(chat_id, context, session)
-        return
-
-    # UNO color selection
-    if result_id.startswith("uno_color:"):
-        color_code = result_id.split(":")[1]
-        session = None
-        chat_id = None
-        for cid, s in game_manager.active_games.items():
-            if user.id in s.players and s.game_code == "24":
-                session = s
-                chat_id = cid
-                break
-        if session and session.game.choosing_color:
-            success, msg = session.game.choose_color(user.id, color_code)
-            if success:
-                if msg: await context.bot.send_message(chat_id=chat_id, text=msg, parse_mode="HTML")
-                await send_uno_turn_message(chat_id, context, session)
-        return
-
-    # UNO draw
-    if result_id == "uno_draw":
-        session = None
-        chat_id = None
-        for cid, s in game_manager.active_games.items():
-            if user.id in s.players and s.game_code == "24":
-                session = s
-                chat_id = cid
-                break
-        if session:
-            await handle_uno_draw_result(user.id, chat_id, context, session)
-        return
-
-    # UNO pass
-    if result_id == "uno_pass":
-        session = None
-        chat_id = None
-        for cid, s in game_manager.active_games.items():
-            if user.id in s.players and s.game_code == "24":
-                session = s
-                chat_id = cid
-                break
-        if session:
-            success, msg = session.game.pass_turn(user.id)
-            if success:
-                if msg: await context.bot.send_message(chat_id=chat_id, text=msg, parse_mode="HTML")
-                await send_uno_turn_message(chat_id, context, session)
-        return
-
-    # UNO anticipation play (non-current player plays exact-match card)
-    if result_id.startswith("uno_grey:"):
-        card_key = result_id.split(":")[1]
-        session = None
-        chat_id = None
-        for cid, s in game_manager.active_games.items():
-            if user.id in s.players and s.game_code == "24":
-                session = s
-                chat_id = cid
-                break
-        if not session: return
-        # Try anticipation play
-        success, msg, needs_color = session.game.anticipate_play(user.id, card_key)
-        if not success:
-            # Not a valid anticipation (might be a grey card that was just tapped)
-            return
-        if msg: await context.bot.send_message(chat_id=chat_id, text=msg, parse_mode="HTML")
-        if session.game.game_over:
-            await end_game(chat_id, context, session)
-            return
-        if needs_color:
-            pid = user.id
-            name = session.game.players.get(pid, "Player")
-            mention = f'<a href="tg://user?id={pid}">{name}</a>'
-            keyboard = InlineKeyboardMarkup([[
-                InlineKeyboardButton("🎨 Choose a color", switch_inline_query_current_chat="uno")
-            ]])
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=f"{mention}, please choose a color:",
-                reply_markup=keyboard,
-                parse_mode="HTML"
-            )
-            return
-        await send_uno_turn_message(chat_id, context, session)
-        return
-
-    # UNO mode selection
-    if result_id.startswith("uno_mode_"):
-        mode = result_id.split("_")[-1]
-        session = None
-        chat_id = None
-        for cid, s in game_manager.active_games.items():
-            if user.id in s.players and s.game_code == "24":
-                session = s
-                chat_id = cid
-                break
-        if session and session.state == GameState.JOINING:
-            session.game.mode = mode
-            mode_name = {"classic": "Classic 🎻", "fast": "Sanic 🚀", "wild": "Wild 🐉"}.get(mode, mode)
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=f"⚙️ <b>Gamemode changed to {mode_name}</b>",
-                parse_mode="HTML"
-            )
-        return
-
-    # Memes (What You Meme game)
-    if not result_id.startswith("wdym_"):
-        return
-        
-    user = result.from_user
-    meme_filename = result_id.replace("wdym_", "")
-    
-    # Get file_id from cache to keep tracking consistent if needed, 
-    # but the game logic just needs to know who submitted.
-    # We can use filename as the unique identifier for the submission.
-    
-    # We don't have chat_id here, but we can find the session by user
-    session = None
-    for chat_id, s in game_manager.active_games.items():
-        if user.id in s.players and s.game_code == "12":
-            session = s
-            break
-            
-    if not session or not session.game.round_in_progress:
-        return
-        
-    success = session.game.submit_meme(user.id, meme_filename)
-    if success:
-        # Check if everyone submitted
-        pending = session.game.get_pending_players()
-        if not pending:
-            # All done!
-            session.game.round_in_progress = False
-            if session.game.is_game_over():
-                await end_game(session.chat_id, context, session)
-            else:
-                await start_wdym_round(session.chat_id, context)
 
 
 async def start_ts_game(chat_id: int, context: ContextTypes.DEFAULT_TYPE, session) -> None:
@@ -4797,199 +4514,8 @@ async def post_init(application: Application) -> None:
 
 
 # ════════════════════════════════════════════════════════════════════════════
-#  UNO GAME HANDLERS
+
 # ════════════════════════════════════════════════════════════════════════════
-
-async def start_uno_game(chat_id: int, context: ContextTypes.DEFAULT_TYPE, session) -> None:
-    """Start a UNO game: deal cards, flip first card, prompt first player."""
-    msg = session.game.start_game()
-    first_card_key = str(session.game.last_card)
-
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text=(
-            "🃏 <b>UNO has started!</b> 🃏\n\n"
-            f"<i>{msg}</i>"
-        ),
-        parse_mode="HTML"
-    )
-
-    # Send the first card as a sticker if we have its file_id
-    sticker_id = UNO_STICKERS.get(first_card_key)
-    if sticker_id:
-        try:
-            await context.bot.send_sticker(chat_id=chat_id, sticker=sticker_id)
-        except Exception as e:
-            logger.error(f"UNO: could not send first card sticker: {e}")
-
-    await send_uno_turn_message(chat_id, context, session)
-
-
-async def send_uno_turn_message(chat_id: int, context: ContextTypes.DEFAULT_TYPE,
-                                session) -> None:
-    """Prompt the current UNO player to take their turn."""
-    pid = session.game.current_player_id
-    name = session.game.get_current_player_name()
-    mention = f'<a href="tg://user?id={pid}">{name}</a>'
-    
-    # mau_mau_bot style turn message with clickable mention
-    text = f"Next player: {mention}"
-    
-    # On first turn, use the first_player message
-    if not session.game.last_card:
-        text = f"First player: {mention}"
-
-    keyboard = InlineKeyboardMarkup([[
-        InlineKeyboardButton("Make your choice!", switch_inline_query_current_chat="uno")
-    ]])
-    
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text=text,
-        reply_markup=keyboard,
-        parse_mode="HTML"
-    )
-
-
-async def handle_uno_color_callback(update: Update,
-                                    context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle color selection after a Wild or Draw-4 card."""
-    query = update.callback_query
-    user  = query.from_user
-    chat  = query.message.chat
-
-    session = game_manager.get_game(chat.id)
-    if not session or session.game_code != "24" or not session.game:
-        await query.answer("No active UNO game.", show_alert=True)
-        return
-
-    color = query.data.replace("uno_color_", "")   # e.g. "r", "b", "g", "y"
-    if color not in UNO_COLORS:
-        await query.answer("Invalid color.", show_alert=True)
-        return
-
-    success, msg = session.game.choose_color(user.id, color)
-    if not success:
-        await query.answer(msg, show_alert=True)
-        return
-
-    await query.answer(f"Color set to {UNO_COLOR_NAMES.get(color, color)}!")
-    try:
-        await query.message.delete()
-    except Exception:
-        pass
-
-    await context.bot.send_message(chat_id=chat.id, text=msg, parse_mode="HTML")
-
-    if session.game.game_over:
-        await end_game(chat.id, context, session)
-    else:
-        await send_uno_turn_message(chat.id, context, session)
-
-
-async def handle_uno_pass_callback(update: Update,
-                                   context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle 'Pass' after drawing a card in UNO."""
-    query   = update.callback_query
-    user    = query.from_user
-    chat    = query.message.chat
-
-    session = game_manager.get_game(chat.id)
-    if not session or session.game_code != "24" or not session.game:
-        await query.answer("No active UNO game.", show_alert=True)
-        return
-
-    success, msg = session.game.pass_turn(user.id)
-    if not success:
-        await query.answer(msg, show_alert=True)
-        return
-
-    await query.answer("Turn passed.")
-    try:
-        await query.message.delete()
-    except Exception:
-        pass
-
-    await context.bot.send_message(chat_id=chat.id, text=msg, parse_mode="HTML")
-    await send_uno_turn_message(chat.id, context, session)
-
-
-async def handle_uno_sticker(update: Update, context: ContextTypes.DEFAULT_TYPE,
-                              session) -> None:
-    """
-    Called from handle_sticker_message when a sticker is sent in a UNO game.
-    Maps the sticker back to a card string and plays it.
-    """
-    message = update.effective_message
-    user    = update.effective_user
-    chat    = update.effective_chat
-
-    sticker_id = message.sticker.file_id
-    card_str   = UNO_STICKER_TO_CARD.get(sticker_id)
-    if not card_str:
-        return   # not a UNO card sticker
-
-    if user.id not in session.game.players:
-        return
-
-    success, msg, needs_color = session.game.play_card(user.id, card_str)
-    if not success:
-        await message.reply_text(f"⚠️ {msg}")
-        return
-
-    if msg:
-        await context.bot.send_message(chat_id=chat.id, text=msg, parse_mode="HTML")
-
-    if session.game.game_over:
-        await end_game(chat.id, context, session)
-        return
-
-    if needs_color:
-        # Ask the player to pick a color
-        keyboard = InlineKeyboardMarkup([[
-            InlineKeyboardButton("❤️ Red",    callback_data="uno_color_r"),
-            InlineKeyboardButton("💙 Blue",   callback_data="uno_color_b"),
-        ], [
-            InlineKeyboardButton("💚 Green",  callback_data="uno_color_g"),
-            InlineKeyboardButton("💛 Yellow", callback_data="uno_color_y"),
-        ]])
-        await context.bot.send_message(
-            chat_id=chat.id,
-            text=f"🎨 <a href=\"tg://user?id={user.id}\">{session.game.players.get(user.id, 'Player')}</a>, choose a color:",
-            reply_markup=keyboard,
-            parse_mode="HTML"
-        )
-        return
-
-    await send_uno_turn_message(chat.id, context, session)
-
-
-async def handle_uno_draw_result(user_id: int, chat_id: int,
-                                 context: ContextTypes.DEFAULT_TYPE,
-                                 session) -> None:
-    """
-    Called from chosen_inline_result_handler when a player selects 'Draw a Card'.
-    """
-    success, msg, drawn = session.game.draw_card(user_id)
-    if not success:
-        return
-
-    if msg:
-        await context.bot.send_message(chat_id=chat_id, text=msg, parse_mode="HTML")
-
-    if session.game.game_over:
-        await end_game(chat_id, context, session)
-        return
-
-    # If it was a penalty draw, the turn already advanced
-    if not session.game.drew_this_turn:
-        await send_uno_turn_message(chat_id, context, session)
-        return
-
-    # Voluntary draw: player sees the drawn card in the inline query.
-    # No need to send an extra message with buttons; matching mau_mau_bot's minimalist style.
-    await send_uno_turn_message(chat_id, context, session)
-
 
 async def start_crazy8_game(chat_id: int, context: ContextTypes.DEFAULT_TYPE, session) -> None:
     """Start the Crazy 8 game."""
@@ -5254,8 +4780,6 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(handle_ts_callback, pattern="^ts_vote_"))
     application.add_handler(CallbackQueryHandler(handle_20q_callback, pattern="^view_secret_word$"))
     application.add_handler(CallbackQueryHandler(handle_c8_callback, pattern="^c8_"))
-    application.add_handler(CallbackQueryHandler(handle_uno_color_callback, pattern="^uno_color_"))
-    application.add_handler(CallbackQueryHandler(handle_uno_pass_callback, pattern="^uno_pass$"))
     application.add_handler(InlineQueryHandler(inline_query_handler))
     application.add_handler(ChosenInlineResultHandler(chosen_inline_result_handler))
     application.add_handler(PollAnswerHandler(handle_poll_answer))

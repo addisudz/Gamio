@@ -16,8 +16,16 @@ class GuessTheLogoGame:
         self.current_round = 0
         self.scores: Dict[int, int] = {}  # user_id -> score
         self.players: Dict[int, str] = {} # user_id -> display_name
-        self.logos: List[Tuple[str, str]] = [] # list of (filename, answer_key)
+        self.logos: List[Tuple[str, str, str]] = [] # list of (filename, answer_key, category)
         self.used_logos: List[str] = []
+        
+        # Options
+        self.category_filter = "All"
+        self.mode = "first" # "first" or "turn"
+        self.time_limit = 60
+        
+        self.turn_order: List[int] = []
+        self.current_turn_index = 0
         
         # Current round state
         self.current_logo_path: Optional[str] = None
@@ -32,10 +40,22 @@ class GuessTheLogoGame:
         if not os.path.exists(logo_dir):
             return
 
-        for filename in os.listdir(logo_dir):
-            if filename.lower().endswith(('.webp', '.png', '.jpg', '.jpeg')):
-                clean_name = os.path.splitext(filename)[0]
-                self.logos.append((os.path.join(logo_dir, filename), clean_name))
+        categories = {}
+        cat_path = os.path.join(logo_dir, "categories.json")
+        if os.path.exists(cat_path):
+            try:
+                import json
+                with open(cat_path, 'r') as f:
+                    categories = json.load(f)
+            except Exception:
+                pass
+
+        for root, _, files in os.walk(logo_dir):
+            for filename in files:
+                if filename.lower().endswith(('.webp', '.png', '.jpg', '.jpeg')):
+                    clean_name = os.path.splitext(filename)[0]
+                    cat = categories.get(filename, ["Global"])[0]
+                    self.logos.append((os.path.join(root, filename), clean_name, cat))
 
     def add_player(self, user_id: int, display_name: str) -> None:
         """Add a player to the game."""
@@ -58,34 +78,54 @@ class GuessTheLogoGame:
         """Start the game."""
         self.current_round = 0
         self.used_logos = []
+        self.turn_order = list(self.players.keys())
+        random.shuffle(self.turn_order)
+        self.current_turn_index = 0
 
-    def start_new_round(self) -> Optional[Tuple[str, int]]:
+    def start_new_round(self) -> Optional[Tuple[str, int, Optional[int]]]:
         """Start a new round with a NEW logo.
         
         Returns:
-            Tuple of (logo_path, round_number) or None if game over/error.
+            Tuple of (logo_path, round_number, current_player_id) or None if game over/error.
         """
         if self.is_game_over() or not self.players:
             return None
 
         self.current_round += 1
         
+        if self.mode == "turn" and self.turn_order:
+            self.current_turn_index = (self.current_turn_index + 1) % len(self.turn_order)
+            current_player_id = self.turn_order[self.current_turn_index]
+            # Ensure player is still in the game
+            while current_player_id not in self.players and self.turn_order:
+                self.turn_order.remove(current_player_id)
+                if not self.turn_order:
+                    return None
+                self.current_turn_index = self.current_turn_index % len(self.turn_order)
+                current_player_id = self.turn_order[self.current_turn_index]
+        else:
+            current_player_id = None
+        
         # Pick a random logo not used yet
         available_logos = [l for l in self.logos if l[0] not in self.used_logos]
+        if self.category_filter != "All":
+            available_logos = [l for l in available_logos if l[2] == self.category_filter]
+            
         if not available_logos:
+            # If we run out in the specific category, just end or reset? Reset used.
             self.used_logos = []
-            available_logos = self.logos
+            available_logos = [l for l in self.logos if l[2] == self.category_filter or self.category_filter == "All"]
         
         if not available_logos:
             return None 
 
-        logo_path, answer = random.choice(available_logos)
+        logo_path, answer, cat = random.choice(available_logos)
         self.used_logos.append(logo_path)
         self.current_logo_path = logo_path
         self.current_answer = answer
         self.waiting_for_answer = True
         
-        return logo_path, self.current_round
+        return logo_path, self.current_round, current_player_id
 
     def check_answer(self, user_id: int, answer: str) -> bool:
         """Check if the answer is correct."""
@@ -93,9 +133,14 @@ class GuessTheLogoGame:
             return False
             
         if user_id not in self.players:
-            # Maybe they joined late? Let's check session scores in main.py usually handles this
-            # but for internal consistency we should check.
             pass
+            
+        if self.mode == "turn":
+            if not self.turn_order:
+                return False
+            current_player = self.turn_order[self.current_turn_index]
+            if user_id != current_player:
+                return False
             
         if not self.current_answer:
             return False

@@ -983,7 +983,8 @@ def get_game_instructions(game_code: str) -> str:
     """Get the How to Play instructions for a game."""
     instructions = {
         "1": "<blockquote expandable><b>How to Play:</b>\n‣ Rearrange the letters to form a correct word.\n‣ Type your answer and send it in the chat.\n‣ Each correct answer earns you points.\n‣ The player with the highest score wins.</blockquote>",
-        "25": "<blockquote expandable><b>How to Play:</b>\n‣ Everyone gets a celebrity assigned to them.\n‣ On your turn, others see who you are, but you don't.\n‣ Ask questions in the group to guess your celebrity.\n‣ Once you know, type the name in the chat.\n‣ Shortest time to guess wins!</blockquote>"
+        "25": "<blockquote expandable><b>How to Play:</b>\n‣ Everyone gets a celebrity assigned to them.\n‣ On your turn, others see who you are, but you don't.\n‣ Ask questions in the group to guess your celebrity.\n‣ Once you know, type the name in the chat.\n‣ Shortest time to guess wins!</blockquote>",
+        "26": "<blockquote expandable><b>How to Play:</b>\n‣ Guess the Song Title and Artist from the provided lyrics.\n‣ Use the '▶Next Line' button to reveal more lines if needed.\n‣ Each correct part (Title or Artist) earns you 2 points.\n‣ Guess both to complete the round!</blockquote>"
     }
     return instructions.get(game_code, "")
 
@@ -4678,15 +4679,13 @@ async def start_sfl_round(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> N
     total = session.game.total_rounds
     round_text = f"Round {round_num}/{total}" if not session.game.endless else f"Round {round_num}"
 
-    keyboard = [[InlineKeyboardButton("🔍 Reveal Next Line", callback_data="sfl_reveal")]]
+    keyboard = [[InlineKeyboardButton("▶Next Line", callback_data="sfl_reveal")]]
     
     await context.bot.send_message(
         chat_id=chat_id,
-        text=f"📜 <b>Guess the Song from Lyrics!</b>\n"
+        text=f"<b>Guess the Song from Lyrics!</b>\n"
              f"{round_text}\n\n"
-             f"<blockquote>{lyrics}</blockquote>\n\n"
-             f"Guess the <b>Song Title</b> and <b>Artist</b>!\n"
-             f"Each is worth 2 points.",
+             f"<blockquote>{lyrics}</blockquote>",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="HTML"
     )
@@ -4720,14 +4719,12 @@ async def handle_sfl_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     # Keep button if more lines exist
     keyboard = []
     if not session.game.all_lines_revealed():
-        keyboard = [[InlineKeyboardButton("🔍 Reveal Next Line", callback_data="sfl_reveal")]]
+        keyboard = [[InlineKeyboardButton("▶Next Line", callback_data="sfl_reveal")]]
 
     await query.edit_message_text(
-        text=f"📜 <b>Guess the Song from Lyrics!</b>\n"
+        text=f"<b>Guess the Song from Lyrics!</b>\n"
              f"{round_text}\n\n"
-             f"<blockquote>{updated_lyrics}</blockquote>\n\n"
-             f"Guess the <b>Song Title</b> and <b>Artist</b>!\n"
-             f"Each is worth 2 points.",
+             f"<blockquote>{updated_lyrics}</blockquote>",
         reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None,
         parse_mode="HTML"
     )

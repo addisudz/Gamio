@@ -675,11 +675,15 @@ async def new_round_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return
         
     session = game_manager.get_game(chat.id)
-    if not session or session.state != GameState.IN_PROGRESS or session.game_code != "1":
+    if not session or session.state != GameState.IN_PROGRESS:
         return
         
-    if getattr(session.game, 'endless', False):
-        await start_round(chat.id, context)
+    if session.game_code == "1":
+        if getattr(session.game, 'endless', False):
+            await start_round(chat.id, context)
+    elif session.game_code == "26":
+        if getattr(session.game, 'endless', False):
+            await start_sfl_round(chat.id, context)
 
 
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -2118,6 +2122,61 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
                 )
                 session.game.next_turn()
                 await play_who_am_i_turn(chat.id, context, session)
+
+        # Handle Song From Lyrics Game
+        elif session.game_code == "26":
+            if not session.game.round_in_progress:
+                return
+
+            text = message.text.strip()
+            display_name = user.first_name or user.username or "Player"
+
+            title_matched = session.game.check_title(user.id, text)
+            artist_matched = session.game.check_artist(user.id, text)
+
+            if title_matched:
+                try:
+                    await message.set_reaction(reaction=ReactionTypeEmoji(emoji="🎉"))
+                except Exception:
+                    pass
+                
+                score = session.game.scores.get(user.id, 0)
+                title = session.game.get_current_title()
+                await message.reply_text(
+                    f"🎵 <b>Title guessed! <a href=\"tg://user?id={user.id}\">{display_name}</a></b>\n\n"
+                    f"Song: <b>{title}</b>\n"
+                    f"Your score: <b>{score}</b> point(s)",
+                    parse_mode="HTML"
+                )
+
+            if artist_matched:
+                try:
+                    await message.set_reaction(reaction=ReactionTypeEmoji(emoji="💯"))
+                except Exception:
+                    pass
+                
+                score = session.game.scores.get(user.id, 0)
+                artist = session.game.get_current_artist()
+                await message.reply_text(
+                    f"🎤 <b>Artist guessed! <a href=\"tg://user?id={user.id}\">{display_name}</a></b>\n\n"
+                    f"Artist: <b>{artist}</b>\n"
+                    f"Your score: <b>{score}</b> point(s)",
+                    parse_mode="HTML"
+                )
+
+            # Check if round is complete (both guessed)
+            if (title_matched or artist_matched) and session.game.is_round_complete():
+                session.game.round_in_progress = False
+                await send_sfl_reveal(chat.id, context, session)
+                await asyncio.sleep(5)
+
+                if session.game.is_game_over():
+                    await end_game(chat.id, context, session)
+                else:
+                    if not session.game.endless:
+                        await start_sfl_round(chat.id, context)
+                    else:
+                        await message.reply_text("use /newsong to start the next round!")
 
 async def reveal_word_after_delay(chat_id: int, context: ContextTypes.DEFAULT_TYPE, round_num: int, delay: int) -> None:
     """Reveal the word if no one answers within the delay."""
@@ -4595,6 +4654,185 @@ async def song_timeout(chat_id: int, context: ContextTypes.DEFAULT_TYPE, round_n
             await start_song_round(chat_id, context)
 
 
+async def start_sfl_game(chat_id: int, context: ContextTypes.DEFAULT_TYPE, session) -> None:
+    """Start the Song From Lyrics game."""
+    await start_sfl_round(chat_id, context)
+
+
+async def start_sfl_round(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Start a new round of Song From Lyrics."""
+    session = game_manager.get_game(chat_id)
+    if not session or session.game_code != "26":
+        return
+
+    # Delay slightly
+    await asyncio.sleep(2)
+
+    if not session.game.start_new_round():
+        # Game Over
+        await end_game(chat_id, context, session)
+        return
+
+    lyrics = session.game.get_current_lyrics_block()
+    round_num = session.game.current_round
+    total = session.game.total_rounds
+    round_text = f"Round {round_num}/{total}" if not session.game.endless else f"Round {round_num}"
+
+    keyboard = [[InlineKeyboardButton("🔍 Reveal Next Line", callback_data="sfl_reveal")]]
+    
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=f"📜 <b>Guess the Song from Lyrics!</b>\n"
+             f"{round_text}\n\n"
+             f"<blockquote>{lyrics}</blockquote>\n\n"
+             f"Guess the <b>Song Title</b> and <b>Artist</b>!\n"
+             f"Each is worth 2 points.",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML"
+    )
+
+    # Start timeout task (90 seconds for lyrics guessing)
+    track_game_task(chat_id, asyncio.create_task(sfl_timeout(chat_id, context, round_num)))
+
+
+async def handle_sfl_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the 'Reveal Next Line' button."""
+    query = update.callback_query
+    user = query.from_user
+    chat = update.effective_chat
+    
+    session = game_manager.get_game(chat.id)
+    if not session or session.game_code != "26" or not session.game.round_in_progress:
+        await query.answer("Game not active.")
+        return
+
+    success, updated_lyrics = session.game.reveal_next_line(user.id)
+    if not success:
+        await query.answer("No more lines to reveal!")
+        return
+
+    await query.answer("Line revealed!")
+    
+    round_num = session.game.current_round
+    total = session.game.total_rounds
+    round_text = f"Round {round_num}/{total}" if not session.game.endless else f"Round {round_num}"
+    
+    # Keep button if more lines exist
+    keyboard = []
+    if not session.game.all_lines_revealed():
+        keyboard = [[InlineKeyboardButton("🔍 Reveal Next Line", callback_data="sfl_reveal")]]
+
+    await query.edit_message_text(
+        text=f"📜 <b>Guess the Song from Lyrics!</b>\n"
+             f"{round_text}\n\n"
+             f"<blockquote>{updated_lyrics}</blockquote>\n\n"
+             f"Guess the <b>Song Title</b> and <b>Artist</b>!\n"
+             f"Each is worth 2 points.",
+        reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None,
+        parse_mode="HTML"
+    )
+
+
+async def send_sfl_reveal(chat_id: int, context: ContextTypes.DEFAULT_TYPE, session) -> None:
+    """Reveal the song details and cover after a round."""
+    title = session.game.get_current_title()
+    artist = session.game.get_current_artist()
+    cover_path = session.game.get_cover_path()
+
+    caption = (
+        f"💿 <b>{title}</b>\n"
+        f"🎤 <b>{artist}</b>"
+    )
+
+    try:
+        if cover_path and os.path.exists(cover_path):
+            with open(cover_path, 'rb') as f:
+                await context.bot.send_photo(
+                    chat_id=chat_id,
+                    photo=f,
+                    caption=caption,
+                    parse_mode="HTML"
+                )
+        else:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=caption,
+                parse_mode="HTML"
+            )
+    except Exception as e:
+        logger.error(f"Error sending song reveal: {e}")
+        await context.bot.send_message(chat_id=chat_id, text=caption, parse_mode="HTML")
+
+
+async def sfl_timeout(chat_id: int, context: ContextTypes.DEFAULT_TYPE, round_num: int) -> None:
+    """Handle timeout for Song From Lyrics round."""
+    await asyncio.sleep(90)
+
+    session = game_manager.get_game(chat_id)
+    if not session or session.game_code != "26":
+        return
+
+    if session.game.current_round == round_num and session.game.round_in_progress:
+        session.game.round_in_progress = False
+
+        reveal_parts = []
+        if not session.game.title_guessed:
+            reveal_parts.append(f"🎵 Song: <b>{session.game.get_current_title()}</b>")
+        if not session.game.artist_guessed:
+            reveal_parts.append(f"🎤 Artist: <b>{session.game.get_current_artist()}</b>")
+
+        reveal_text = "\n".join(reveal_parts)
+
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=f"⏰ <b>Time's Up!</b>\n\n{reveal_text}",
+            parse_mode="HTML"
+        )
+
+        await send_sfl_reveal(chat_id, context, session)
+        await asyncio.sleep(5)
+
+        if session.game.is_game_over():
+            await end_game(chat_id, context, session)
+        else:
+            if not session.game.endless:
+                await start_sfl_round(chat_id, context)
+            else:
+                await context.bot.send_message(chat_id=chat_id, text="use /newsong to start the next round!")
+
+
+async def skip_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Skip the current round (if not endless and user is in game)."""
+    chat = update.effective_chat
+    user = update.effective_user
+    
+    session = game_manager.get_game(chat.id)
+    if not session or not session.game or session.state != GameState.IN_PROGRESS:
+        return
+        
+    if user.id not in session.players:
+        await update.message.reply_text("❌ Only players can skip!")
+        return
+
+    if session.game_code == "26":
+        if session.game.endless:
+            await update.message.reply_text("💡 In endless mode, use /newsong to skip or advance.")
+            return
+            
+        session.game.round_in_progress = False
+        await update.message.reply_text("⏭ <b>Skipping round...</b>", parse_mode="HTML")
+        await send_sfl_reveal(chat.id, context, session)
+        await asyncio.sleep(3)
+        
+        if session.game.is_game_over():
+            await end_game(chat.id, context, session)
+        else:
+            await start_sfl_round(chat.id, context)
+    else:
+        # Fallback for other games if needed, but the user specifically asked for this one
+        pass
+
+
 async def error_handler(update: Optional[Update], context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log Errors caused by Updates."""
     if isinstance(context.error, (NetworkError, TimedOut)):
@@ -4619,7 +4857,8 @@ async def post_init(application: Application) -> None:
         BotCommand("start", "Start a game"),
         BotCommand("join", "Join the game"),
         BotCommand("leave", "Leave the game"),
-        BotCommand("skip", "Skip the current player's turn"),
+        BotCommand("skip", "Skip current round"),
+        BotCommand("newsong", "Next song (endless mode)"),
         BotCommand("leaderboard", "Show group leaderboard"),
         BotCommand("extend", "[admin] extend joining period by 10 seconds"),
         BotCommand("quit", "[admin] Stop current game in progress"),
@@ -4905,6 +5144,7 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(handle_ts_callback, pattern="^ts_vote_"))
     application.add_handler(CallbackQueryHandler(handle_20q_callback, pattern="^view_secret_word$"))
     application.add_handler(CallbackQueryHandler(handle_c8_callback, pattern="^c8_"))
+    application.add_handler(CallbackQueryHandler(handle_sfl_callback, pattern="^sfl_reveal$"))
     application.add_handler(InlineQueryHandler(inline_query_handler))
     application.add_handler(ChosenInlineResultHandler(chosen_inline_result_handler))
     application.add_handler(PollAnswerHandler(handle_poll_answer))
@@ -4912,6 +5152,10 @@ def main() -> None:
     application.add_handler(MessageHandler(filters.PHOTO, handle_photo_message))
     application.add_handler(MessageHandler(filters.Sticker.ALL, handle_sticker_message))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
+    
+    # Add new song round command
+    application.add_handler(CommandHandler("newsong", new_round_command))
+    application.add_handler(CommandHandler("skip", skip_command))
     
 
 

@@ -109,7 +109,7 @@ class SongFromLyricsGame:
             return ""
         lines = self.current_song.get("lyrics", [])
         shown = lines[: self.revealed_lines]
-        return "\n".join(f"{i+1}. {line}" for i, line in enumerate(shown))
+        return "\n".join(shown)
 
     def reveal_next_line(self, user_id: int) -> Tuple[bool, str]:
         """Reveal one more lyric line and subtract 1 point from the revealer.
@@ -124,10 +124,6 @@ class SongFromLyricsGame:
         lines = self.current_song.get("lyrics", [])
         if self.revealed_lines >= len(lines):
             return False, self.get_current_lyrics_block()
-
-        # Deduct 1 point (floor at 0)
-        current = self.scores.get(user_id, 0)
-        self.scores[user_id] = max(0, current - 1)
 
         self.revealed_lines += 1
         return True, self.get_current_lyrics_block()

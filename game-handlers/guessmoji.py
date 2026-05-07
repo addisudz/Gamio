@@ -111,11 +111,12 @@ class GuessMojiGame:
         ]
     }
     
-    def __init__(self, total_rounds: int = 20):
-        """Initialize a new game with a random theme.
+    def __init__(self, total_rounds: int = 20, theme: Optional[str] = None):
+        """Initialize a new game with a theme.
         
         Args:
             total_rounds: Number of rounds to play (default: 20)
+            theme: Theme name to use (default: None, picks random)
         """
         self.total_rounds = total_rounds
         self.current_round = 0
@@ -124,8 +125,12 @@ class GuessMojiGame:
         self.used_puzzles: List[Dict[str, str]] = []
         self.round_in_progress = False
         
-        # Randomly select a theme
-        self.theme_name = random.choice(list(self.THEMED_PUZZLES.keys()))
+        # Select theme
+        if theme and theme in self.THEMED_PUZZLES:
+            self.theme_name = theme
+        else:
+            self.theme_name = random.choice(list(self.THEMED_PUZZLES.keys()))
+            
         self.current_theme_puzzles = self.THEMED_PUZZLES[self.theme_name]
         
     def add_player(self, user_id: int) -> None:

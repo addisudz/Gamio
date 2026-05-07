@@ -804,7 +804,7 @@ async def handle_game_menu_callback(update: Update, context: ContextTypes.DEFAUL
         await query.answer()
         
     elif data.startswith("opt_"):
-        if data in ["opt_done_1", "opt_done_2", "opt_done_3", "opt_done_4"]:
+        if data in ["opt_done_1", "opt_done_2", "opt_done_3", "opt_done_4", "opt_done_5"]:
             session.is_configuring = False
             await query.edit_message_reply_markup(reply_markup=get_options_markup(session))
             await query.answer("Options saved.")
@@ -851,6 +851,22 @@ async def handle_game_menu_callback(update: Update, context: ContextTypes.DEFAUL
             cat_map = {"0": "All", "1": "Ethiopian", "2": "Tech", "3": "Cars"}
             val = data.split("_")[-1]
             session.game.category_filter = cat_map.get(val, "All")
+            await query.edit_message_reply_markup(reply_markup=get_options_markup(session))
+            await query.answer()
+        elif data.startswith("opt_5_ct_"):
+            # Map for GuessMoji categories
+            cat_map = {"0": "Movies 🎬", "1": "Idioms & Dictionary 📖", "2": "Songs 🎵", "3": "Places 🌍"}
+            val = data.split("_")[-1]
+            theme_name = cat_map.get(val)
+            if theme_name and theme_name in session.game.THEMED_PUZZLES:
+                session.game.theme_name = theme_name
+                session.game.current_theme_puzzles = session.game.THEMED_PUZZLES[theme_name]
+                session.game.used_puzzles = [] # Reset used puzzles when theme changes
+            await query.edit_message_reply_markup(reply_markup=get_options_markup(session))
+            await query.answer()
+        elif data.startswith("opt_5_rd_"):
+            val = int(data.split("_")[-1])
+            session.game.total_rounds = val
             await query.edit_message_reply_markup(reply_markup=get_options_markup(session))
             await query.answer()
             
@@ -957,7 +973,7 @@ def get_game_instructions(game_code: str) -> str:
 
 def get_options_markup(session) -> Optional[InlineKeyboardMarkup]:
     """Get the inline keyboard for game options."""
-    if not session or session.game_code not in ["1", "2", "3", "4"]:
+    if not session or session.game_code not in ["1", "2", "3", "4", "5"]:
         return None
         
     if not getattr(session, 'is_configuring', False):
@@ -1062,6 +1078,33 @@ def get_options_markup(session) -> Optional[InlineKeyboardMarkup]:
             [InlineKeyboardButton("⬅", callback_data="opt_done_4", api_kwargs={"style": "primary"})]
         ]
         return InlineKeyboardMarkup(keyboard)
+
+
+    elif session.game_code == "5":
+        current_theme = getattr(session.game, 'theme_name', "Movies 🎬")
+        tr = getattr(session.game, 'total_rounds', 20)
+        
+        keyboard = [
+            [InlineKeyboardButton("Category:", callback_data="ignore_opt")],
+            [
+                InlineKeyboardButton("Movies", callback_data="opt_5_ct_0", api_kwargs={"style": "success"} if current_theme=="Movies 🎬" else {}),
+                InlineKeyboardButton("Idioms", callback_data="opt_5_ct_1", api_kwargs={"style": "success"} if current_theme=="Idioms & Dictionary 📖" else {})
+            ],
+            [
+                InlineKeyboardButton("Songs", callback_data="opt_5_ct_2", api_kwargs={"style": "success"} if current_theme=="Songs 🎵" else {}),
+                InlineKeyboardButton("Places", callback_data="opt_5_ct_3", api_kwargs={"style": "success"} if current_theme=="Places 🌍" else {})
+            ],
+            [InlineKeyboardButton("Rounds:", callback_data="ignore_opt")],
+            [
+                InlineKeyboardButton("10", callback_data="opt_5_rd_10", api_kwargs={"style": "success"} if tr==10 else {}),
+                InlineKeyboardButton("15", callback_data="opt_5_rd_15", api_kwargs={"style": "success"} if tr==15 else {}),
+                InlineKeyboardButton("20", callback_data="opt_5_rd_20", api_kwargs={"style": "success"} if tr==20 else {}),
+                InlineKeyboardButton("25", callback_data="opt_5_rd_25", api_kwargs={"style": "success"} if tr==25 else {})
+            ],
+            [InlineKeyboardButton("⬅", callback_data="opt_done_5", api_kwargs={"style": "primary"})]
+        ]
+        return InlineKeyboardMarkup(keyboard)
+
 
 async def start_game_after_delay(chat_id: int, context: ContextTypes.DEFAULT_TYPE, delay: int) -> None:
     """Wait for the specified delay, then start the game if enough players joined.
@@ -1181,6 +1224,14 @@ async def start_game_after_delay(chat_id: int, context: ContextTypes.DEFAULT_TYP
             mode_text = (
                 f"\n\n<blockquote><b>Mode:</b>\n"
                 f"Impostor(s): {ni}</blockquote>"
+            )
+        elif session.game_code == "5":
+            theme = getattr(session.game, 'theme_name', "Movies 🎬")
+            rounds = getattr(session.game, 'total_rounds', 20)
+            mode_text = (
+                f"\n\n<blockquote><b>Mode:</b>\n"
+                f"Rounds: {rounds}\n"
+                f"Category: {theme}</blockquote>"
             )
             
             
@@ -3318,14 +3369,12 @@ async def start_guessmoji_round(chat_id: int, context: ContextTypes.DEFAULT_TYPE
     
     await context.bot.send_message(
         chat_id=chat_id,
-        text=f"🤔 <b>Guess the Word/Phrase!</b>\n"
-             f"Theme: <b>{theme}</b>\n"
-             f"Round {round_num}/{session.game.total_rounds}\n\n"
+        text=f"<b>Round {round_num}/{session.game.total_rounds}</b>\n\n"
              f"{emojis}\n\n"
-             f"First to guess gets a point! (60s)",
+             f"<i>First to guess gets a point ⏳60s</i>",
         parse_mode="HTML"
     )
-
+    
     # Start timeout task (60 seconds)
     track_game_task(chat_id, asyncio.create_task(guessmoji_timeout(chat_id, context, round_num)))
 

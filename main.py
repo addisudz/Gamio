@@ -53,6 +53,7 @@ from wdym_game import MemeGame
 from taylor_shakespeare import TaylorShakespeareGame
 from twenty_questions import TwentyQuestionsGame
 from guess_the_song import GuessTheSongGame
+from song_from_lyrics import SongFromLyricsGame
 from crazy_eight import Crazy8Game
 from guess_the_book import GuessTheBookGame
 from guess_the_marvel import GuessMarvelGame
@@ -411,7 +412,7 @@ GAME_CATEGORIES = {
         ]
     },
     "Music & Media": {
-        "games": [("16", "Guess the Song"), ("12", "What You Meme")]
+        "games": [("16", "Guess the Song"), ("26", "Song From Lyrics"), ("12", "What You Meme")]
     },
     "Party Games": {
         "games": [("3", "Guess the Imposter"), ("15", "20 Questions"), ("21", "Hear Me Out"), ("25", "Who Am I")]
@@ -445,7 +446,8 @@ GAMES_METADATA = {
     "21": ("Hear Me Out", "2"),
     "22": ("Name the Player", "2"),
     "23": ("Movie Scene", "2"),
-    "25": ("Who Am I", "2")
+    "25": ("Who Am I", "2"),
+    "26": ("Song From Lyrics", "2")
 }
 
 # Game Cover Images
@@ -471,7 +473,8 @@ GAME_COVERS = {
     "21": "Hear Me Out.png",
     "22": "Name the Player.png",
     "23": "Movie Scene.png",
-    "25": "Who Am I.png"
+    "25": "Who Am I.png",
+    "26": "Guess the Song.png"
 }
 
 
@@ -804,7 +807,7 @@ async def handle_game_menu_callback(update: Update, context: ContextTypes.DEFAUL
         await query.answer()
         
     elif data.startswith("opt_"):
-        if data in ["opt_done_1", "opt_done_2", "opt_done_3", "opt_done_4", "opt_done_5"]:
+        if data in ["opt_done_1", "opt_done_2", "opt_done_3", "opt_done_4", "opt_done_5", "opt_done_26"]:
             session.is_configuring = False
             await query.edit_message_reply_markup(reply_markup=get_options_markup(session))
             await query.answer("Options saved.")
@@ -869,6 +872,15 @@ async def handle_game_menu_callback(update: Update, context: ContextTypes.DEFAUL
             session.game.total_rounds = val
             await query.edit_message_reply_markup(reply_markup=get_options_markup(session))
             await query.answer()
+        elif data.startswith("opt_26_rd_"):
+            val_str = data.split("_")[-1]
+            if val_str == "endless":
+                session.game.endless = True
+            else:
+                session.game.total_rounds = int(val_str)
+                session.game.endless = False
+            await query.edit_message_reply_markup(reply_markup=get_options_markup(session))
+            await query.answer()
             
     elif data.startswith("game_options_"):
         session.is_configuring = True
@@ -911,6 +923,7 @@ async def handle_game_menu_callback(update: Update, context: ContextTypes.DEFAUL
                 "21": ("Hear Me Out", "2"),
                 "22": ("Name the Player", "2"),
                 "23": ("Movie Scene", "2"),
+                "26": ("Song From Lyrics", "2"),
             }
             
             game_name, min_players = game_info.get(game_code, ("General Knowledge", "2"))
@@ -973,7 +986,7 @@ def get_game_instructions(game_code: str) -> str:
 
 def get_options_markup(session) -> Optional[InlineKeyboardMarkup]:
     """Get the inline keyboard for game options."""
-    if not session or session.game_code not in ["1", "2", "3", "4", "5"]:
+    if not session or session.game_code not in ["1", "2", "3", "4", "5", "26"]:
         return None
         
     if not getattr(session, 'is_configuring', False):
@@ -1105,6 +1118,21 @@ def get_options_markup(session) -> Optional[InlineKeyboardMarkup]:
         ]
         return InlineKeyboardMarkup(keyboard)
 
+    elif session.game_code == "26":
+        tr = getattr(game, 'total_rounds', 10)
+        endless = getattr(game, 'endless', False)
+
+        keyboard = [
+            [InlineKeyboardButton("Rounds:", callback_data="ignore_opt")],
+            [
+                InlineKeyboardButton("10", callback_data="opt_26_rd_10", api_kwargs={"style": "success"} if tr==10 and not endless else {}),
+                InlineKeyboardButton("20", callback_data="opt_26_rd_20", api_kwargs={"style": "success"} if tr==20 and not endless else {}),
+                InlineKeyboardButton("Endless", callback_data="opt_26_rd_endless", api_kwargs={"style": "success"} if endless else {})
+            ],
+            [InlineKeyboardButton("⬅", callback_data="opt_done_26", api_kwargs={"style": "primary"})]
+        ]
+        return InlineKeyboardMarkup(keyboard)
+
 
 async def start_game_after_delay(chat_id: int, context: ContextTypes.DEFAULT_TYPE, delay: int) -> None:
     """Wait for the specified delay, then start the game if enough players joined.
@@ -1233,8 +1261,14 @@ async def start_game_after_delay(chat_id: int, context: ContextTypes.DEFAULT_TYP
                 f"Rounds: {rounds}\n"
                 f"Category: {theme}</blockquote>"
             )
-            
-            
+        elif session.game_code == "26":
+            endless = getattr(session.game, 'endless', False)
+            rounds = "Endless" if endless else getattr(session.game, 'total_rounds', 10)
+            mode_text = (
+                f"\n\n<blockquote><b>Mode:</b>\n"
+                f"Rounds: {rounds}</blockquote>"
+            )
+
         await context.bot.send_message(
             chat_id=chat_id,
             text=f"🎮 <b>Game starting...</b>\n\n"
@@ -1310,6 +1344,9 @@ async def start_game_after_delay(chat_id: int, context: ContextTypes.DEFAULT_TYP
         elif session.game_code == "25":
             # Who Am I
             await start_who_am_i_game(chat_id, context, session)
+        elif session.game_code == "26":
+            # Song From Lyrics
+            await start_sfl_game(chat_id, context, session)
 
 
 

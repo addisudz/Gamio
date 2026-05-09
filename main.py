@@ -5122,7 +5122,7 @@ async def html5_game_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not query.game_short_name:
         return
         
-    host_url = os.environ.get("HOST_URL", "https://gamio-testing.onrender.com")
+    host_url = os.environ.get("HOST_URL", "https://games-2xn4.onrender.com")
     if host_url.endswith('/'):
         host_url = host_url[:-1]
     
@@ -5296,7 +5296,8 @@ def main() -> None:
         import base64
         
         html5_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "html5-games")
-        app = Flask(__name__, static_folder=html5_dir, static_url_path="/html5-games")
+        # Change static_url_path to avoid route collision with our custom /html5-games route
+        app = Flask(__name__, static_folder=html5_dir, static_url_path="/html5-static")
         GAME_SECRET = os.environ.get("GAME_SECRET", "gamio-secret-123")
 
         @app.route('/')

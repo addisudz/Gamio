@@ -4827,8 +4827,13 @@ async def error_handler(update: Optional[Update], context: ContextTypes.DEFAULT_
     logger.error(f"Update {update} caused error {context.error}", exc_info=context.error)
 
 
+BOT_MAIN_LOOP = None
+
 async def post_init(application: Application) -> None:
     """Explicitly initialize the bot."""
+    global BOT_MAIN_LOOP
+    BOT_MAIN_LOOP = asyncio.get_running_loop()
+    
     await application.bot.initialize()
     bot_info = await application.bot.get_me()
     logger.info(f"Bot initialized: {bot_info.id} (@{bot_info.username})")
@@ -5343,9 +5348,13 @@ def main() -> None:
                 
                 # Persistent save
                 from leaderboard import record_game_scores
+                global BOT_MAIN_LOOP
+                if BOT_MAIN_LOOP is None:
+                    return jsonify({"ok": False, "error": "Bot loop not ready"}), 500
+                    
                 asyncio.run_coroutine_threadsafe(
                     record_game_scores([(user_id, score)], "html5", 0, application),
-                    loop=application.loop
+                    loop=BOT_MAIN_LOOP
                 )
                 
                 return jsonify({"ok": True, "score": score})

@@ -5092,6 +5092,114 @@ def _build_game_filter_message():
     return text, InlineKeyboardMarkup(rows)
 
 
+MINI_GAMES = {
+    "flappybird": ("Flappy Bird 🐦", "flappy-bird/flappybird.html"),
+    "2048": ("2048 🔢", "2048/2048.html"),
+    "candycrush": ("Candy Crush 🍬", "candy-crush/candycrush.html"),
+    "pianotiles": ("Piano Tiles 🎹", "piano-tiles/pianotiles.html"),
+    "typerace": ("Type Race 🏎", "type-race/typerace.html")
+}
+
+async def html5_game_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle HTML5 Game Callback Queries."""
+    query = update.callback_query
+    if not query.game_short_name:
+        return
+        
+    host_url = os.environ.get("HOST_URL", "https://gamio-testing.onrender.com")
+    if host_url.endswith('/'):
+        host_url = host_url[:-1]
+    
+    game_id = query.game_short_name
+    # Normalize game_id if needed
+    if game_id in MINI_GAMES:
+        _, path = MINI_GAMES[game_id]
+        url = f"{host_url}/html5-games/{path}"
+        await context.bot.answer_callback_query(query.id, url=url)
+    elif game_id in ["flappy", "flappy_bird"]: # Aliases
+        url = f"{host_url}/html5-games/flappy-bird/flappybird.html"
+        await context.bot.answer_callback_query(query.id, url=url)
+    else:
+        await context.bot.answer_callback_query(query.id, text="Game not found", show_alert=True)
+
+async def flappy_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send the Flappy Bird game."""
+    chat = update.effective_chat
+    try:
+        await context.bot.send_game(chat_id=chat.id, game_short_name="flappybird")
+    except Exception as e:
+        logger.error(f"Failed to send game 'flappybird': {e}")
+        from telegram import WebAppInfo
+        
+        host_url = os.environ.get("HOST_URL", "https://gamio-testing.onrender.com")
+        if host_url.endswith('/'):
+            host_url = host_url[:-1]
+        url = f"{host_url}/html5-games/flappy-bird/flappybird.html"
+        
+        keyboard = [[InlineKeyboardButton("Play Flappy Bird", web_app=WebAppInfo(url=url))]]
+        await context.bot.send_message(
+            chat_id=chat.id,
+            text="Play Flappy Bird! (Web App Fallback)\nNote: To use native games, register 'flappybird' in BotFather.",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+async def minigames_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Display the available mini-games menu."""
+    keyboard = []
+    # 2 columns for the menu
+    game_ids = list(MINI_GAMES.keys())
+    for i in range(0, len(game_ids), 2):
+        row = []
+        gid1 = game_ids[i]
+        name1, _ = MINI_GAMES[gid1]
+        row.append(InlineKeyboardButton(name1, callback_data=f"mg_play_{gid1}"))
+        
+        if i + 1 < len(game_ids):
+            gid2 = game_ids[i+1]
+            name2, _ = MINI_GAMES[gid2]
+            row.append(InlineKeyboardButton(name2, callback_data=f"mg_play_{gid2}"))
+        keyboard.append(row)
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(
+        "<b>Mini Games</b> 🕹\nSelect a game to play:",
+        reply_markup=reply_markup,
+        parse_mode="HTML"
+    )
+
+async def minigames_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle mini-game selection from the menu."""
+    query = update.callback_query
+    data = query.data
+    
+    if data.startswith("mg_play_"):
+        game_id = data.replace("mg_play_", "")
+        chat_id = query.message.chat_id
+        
+        # Delete the menu message
+        await query.message.delete()
+        
+        # Send the game
+        try:
+            await context.bot.send_game(chat_id=chat_id, game_short_name=game_id)
+        except Exception as e:
+            logger.error(f"Failed to send game '{game_id}': {e}")
+            from telegram import WebAppInfo
+            
+            host_url = os.environ.get("HOST_URL", "https://gamio-testing.onrender.com")
+            if host_url.endswith('/'):
+                host_url = host_url[:-1]
+            
+            if game_id in MINI_GAMES:
+                name, path = MINI_GAMES[game_id]
+                url = f"{host_url}/html5-games/{path}"
+                keyboard = [[InlineKeyboardButton(f"Play {name}", web_app=WebAppInfo(url=url))]]
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=f"Play {name}! (Web App Fallback)\nNote: To use native games, register '{game_id}' in BotFather.",
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+
 def main() -> None:
     """Start the bot."""
     # Get bot token from environment
@@ -5138,6 +5246,12 @@ def main() -> None:
     # Add new song round command
     application.add_handler(CommandHandler("newsong", new_round_command))
     application.add_handler(CommandHandler("skip", skip_command))
+    application.add_handler(CommandHandler("flappy", flappy_command))
+    application.add_handler(CommandHandler("minigames", minigames_command))
+    
+    # Add HTML5 game callback handler at the end of callback handlers
+    application.add_handler(CallbackQueryHandler(minigames_callback_handler, pattern="^mg_play_"))
+    application.add_handler(CallbackQueryHandler(html5_game_callback))
     
 
 
@@ -5156,7 +5270,8 @@ def main() -> None:
 
     # Set up Flask server for health checks
     if os.environ.get("DISABLE_FLASK") != "1":
-        app = Flask(__name__)
+        html5_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "html5-games")
+        app = Flask(__name__, static_folder=html5_dir, static_url_path="/html5-games")
 
         @app.route('/')
         def health_check():

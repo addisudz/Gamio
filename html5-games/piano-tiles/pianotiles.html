@@ -309,7 +309,7 @@
                 loadProgress = 0.1;
 
                 // 1. Fetch the audio data for analysis and playback
-                const resp = await fetch('/piano-tiles/song.mp3');
+                const resp = await fetch('assets/song.mp3');
                 if (!resp.ok) throw new Error("Audio not found");
                 const arrayBuf = await resp.arrayBuffer();
                 loadProgress = 0.4;

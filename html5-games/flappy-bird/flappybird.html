@@ -178,11 +178,11 @@
             message: new Image(),
             gameover: new Image(),
             // Sounds
-            wing: new Audio('/flappy-bird-assets/audio/wing.wav' + vStr),
-            point: new Audio('/flappy-bird-assets/audio/point.wav' + vStr),
-            hit: new Audio('/flappy-bird-assets/audio/hit.wav' + vStr),
-            die: new Audio('/flappy-bird-assets/audio/die.wav' + vStr),
-            swoosh: new Audio('/flappy-bird-assets/audio/swoosh.wav' + vStr)
+            wing: new Audio('assets/audio/wing.wav' + vStr),
+            point: new Audio('assets/audio/point.wav' + vStr),
+            hit: new Audio('assets/audio/hit.wav' + vStr),
+            die: new Audio('assets/audio/die.wav' + vStr),
+            swoosh: new Audio('assets/audio/swoosh.wav' + vStr)
         };
 
         function onAssetLoad() {
@@ -217,14 +217,14 @@
         assets.die.oncanplaythrough = onAssetLoad;
         assets.swoosh.oncanplaythrough = onAssetLoad;
 
-        assets.bg.src = '/flappy-bird-assets/sprites/background-day.png' + vStr;
-        assets.base.src = '/flappy-bird-assets/sprites/base.png' + vStr;
-        assets.pipe.src = '/flappy-bird-assets/sprites/pipe-green.png' + vStr;
-        assets.bird[0].src = '/flappy-bird-assets/sprites/yellowbird-downflap.png' + vStr;
-        assets.bird[1].src = '/flappy-bird-assets/sprites/yellowbird-midflap.png' + vStr;
-        assets.bird[2].src = '/flappy-bird-assets/sprites/yellowbird-upflap.png' + vStr;
-        assets.message.src = '/flappy-bird-assets/sprites/message.png' + vStr;
-        assets.gameover.src = '/flappy-bird-assets/sprites/gameover.png' + vStr;
+        assets.bg.src = 'assets/sprites/background-day.png' + vStr;
+        assets.base.src = 'assets/sprites/base.png' + vStr;
+        assets.pipe.src = 'assets/sprites/pipe-green.png' + vStr;
+        assets.bird[0].src = 'assets/sprites/yellowbird-downflap.png' + vStr;
+        assets.bird[1].src = 'assets/sprites/yellowbird-midflap.png' + vStr;
+        assets.bird[2].src = 'assets/sprites/yellowbird-upflap.png' + vStr;
+        assets.message.src = 'assets/sprites/message.png' + vStr;
+        assets.gameover.src = 'assets/sprites/gameover.png' + vStr;
 
         (function() {
             const urlParams = new URLSearchParams(window.location.search);

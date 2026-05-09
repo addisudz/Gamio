@@ -295,26 +295,26 @@
     </div>
 
     <!-- SOUNDS -->
-    <audio id="sfx-bomb-created" src="/candy-crush/sound/colour-bomb-created.mp3" preload="auto"></audio>
-    <audio id="sfx-bomb-use" src="/candy-crush/sound/colour-bomb1.mp3" preload="auto"></audio>
-    <audio id="sfx-wrapped-created" src="/candy-crush/sound/wrapped-candy-created1.mp3" preload="auto"></audio>
-    <audio id="sfx-laser" src="/candy-crush/sound/line-blast1.mp3" preload="auto"></audio>
-    <audio id="v-sweet" src="/candy-crush/sound/sweet.mp3" preload="auto"></audio>
-    <audio id="v-tasty" src="/candy-crush/sound/tasty.mp3" preload="auto"></audio>
-    <audio id="v-delicious" src="/candy-crush/sound/delicious.mp3" preload="auto"></audio>
-    <audio id="v-divine" src="/candy-crush/sound/divine.mp3" preload="auto"></audio>
-    <audio id="v-sugar" src="/candy-crush/sound/sugar-crush.mp3" preload="auto"></audio>
-    <audio id="sfx-combo1" src="/candy-crush/sound/combo-sound1.mp3" preload="auto"></audio>
-    <audio id="sfx-combo2" src="/candy-crush/sound/combo-sound2.mp3" preload="auto"></audio>
-    <audio id="sfx-combo3" src="/candy-crush/sound/combo-sound3.mp3" preload="auto"></audio>
-    <audio id="sfx-combo4" src="/candy-crush/sound/combo-sound4.mp3" preload="auto"></audio>
-    <audio id="sfx-combo5" src="/candy-crush/sound/combo-sound5.mp3" preload="auto"></audio>
-    <audio id="sfx-combo6" src="/candy-crush/sound/combo-sound6.mp3" preload="auto"></audio>
-    <audio id="sfx-combo7" src="/candy-crush/sound/combo-sound7.mp3" preload="auto"></audio>
+    <audio id="sfx-bomb-created" src="assets/sound/colour-bomb-created.mp3" preload="auto"></audio>
+    <audio id="sfx-bomb-use" src="assets/sound/colour-bomb1.mp3" preload="auto"></audio>
+    <audio id="sfx-wrapped-created" src="assets/sound/wrapped-candy-created1.mp3" preload="auto"></audio>
+    <audio id="sfx-laser" src="assets/sound/line-blast1.mp3" preload="auto"></audio>
+    <audio id="v-sweet" src="assets/sound/sweet.mp3" preload="auto"></audio>
+    <audio id="v-tasty" src="assets/sound/tasty.mp3" preload="auto"></audio>
+    <audio id="v-delicious" src="assets/sound/delicious.mp3" preload="auto"></audio>
+    <audio id="v-divine" src="assets/sound/divine.mp3" preload="auto"></audio>
+    <audio id="v-sugar" src="assets/sound/sugar-crush.mp3" preload="auto"></audio>
+    <audio id="sfx-combo1" src="assets/sound/combo-sound1.mp3" preload="auto"></audio>
+    <audio id="sfx-combo2" src="assets/sound/combo-sound2.mp3" preload="auto"></audio>
+    <audio id="sfx-combo3" src="assets/sound/combo-sound3.mp3" preload="auto"></audio>
+    <audio id="sfx-combo4" src="assets/sound/combo-sound4.mp3" preload="auto"></audio>
+    <audio id="sfx-combo5" src="assets/sound/combo-sound5.mp3" preload="auto"></audio>
+    <audio id="sfx-combo6" src="assets/sound/combo-sound6.mp3" preload="auto"></audio>
+    <audio id="sfx-combo7" src="assets/sound/combo-sound7.mp3" preload="auto"></audio>
 
-    <audio id="mus-intro" src="/candy-crush/sound/candy_crush_intro2.mp3" preload="auto" loop></audio>
-    <audio id="mus-game" src="/candy-crush/sound/SA_Game_mode_mixed_modes_loop.mp3" preload="auto" loop></audio>
-    <audio id="mus-outro" src="/candy-crush/sound/candy_crush_outro1.mp3" preload="auto" loop></audio>
+    <audio id="mus-intro" src="assets/sound/candy_crush_intro2.mp3" preload="auto" loop></audio>
+    <audio id="mus-game" src="assets/sound/SA_Game_mode_mixed_modes_loop.mp3" preload="auto" loop></audio>
+    <audio id="mus-outro" src="assets/sound/candy_crush_outro1.mp3" preload="auto" loop></audio>
 
 <script>
 // ======================== PARAMS ========================
@@ -390,16 +390,16 @@ function createCandyDom(r, c, color, type) {
 function applyAppearance(el, color, type) {
     el.className = 'candy'; // reset
     if (type === 'color_bomb') {
-        el.style.backgroundImage = `url('/candy-crush/bomb.png')`;
+        el.style.backgroundImage = `url('assets/bomb.png')`;
     } else if (type === 'wrapped') {
-        el.style.backgroundImage = `url('/candy-crush/${color}-wrapped.png')`;
+        el.style.backgroundImage = `url('assets/${color}-wrapped.png')`;
         el.classList.add('wrapped');
     } else if (type === 'striped_h') {
-        el.style.backgroundImage = `url('/candy-crush/${color}-horizontal.png')`;
+        el.style.backgroundImage = `url('assets/${color}-horizontal.png')`;
     } else if (type === 'striped_v') {
-        el.style.backgroundImage = `url('/candy-crush/${color}-vertical.png')`;
+        el.style.backgroundImage = `url('assets/${color}-vertical.png')`;
     } else {
-        el.style.backgroundImage = `url('/candy-crush/${color}-candy.png')`;
+        el.style.backgroundImage = `url('assets/${color}-candy.png')`;
     }
 }
 

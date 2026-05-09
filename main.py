@@ -5295,7 +5295,6 @@ def main() -> None:
         from flask import request, jsonify, send_from_directory, render_template_string
         import base64
         
-        main_loop = asyncio.get_event_loop()
         html5_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "html5-games")
         # Change static_url_path to avoid route collision with our custom /html5-games route
         app = Flask(__name__, static_folder=html5_dir, static_url_path="/html5-static")
@@ -5346,7 +5345,7 @@ def main() -> None:
                 from leaderboard import record_game_scores
                 asyncio.run_coroutine_threadsafe(
                     record_game_scores([(user_id, score)], "html5", 0, application),
-                    loop=main_loop
+                    loop=application.loop
                 )
                 
                 return jsonify({"ok": True, "score": score})

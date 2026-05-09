@@ -573,46 +573,31 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     
     # Only work in groups
     if chat.type == ChatType.PRIVATE:
+        bot_username = context.bot.username or "GamioBot"
         master_username = os.environ.get("MASTER_BOT_USERNAME", "gamiorobot")
         is_clone = False
-        if context.bot.username and context.bot.username.lower() != master_username.lower():
+        if bot_username.lower() != master_username.lower():
             is_clone = True
             
-        if is_clone:
-            keyboard = [[InlineKeyboardButton("🤖 Create Managed Bot", url=f"https://t.me/{master_username}")]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            
-            await update.message.reply_text(
-                "Sup\n\n"
-                "Add me to a group and make me an admin to start playing games.\n\n"
-                f"<i>Note: You can only clone bots from the main bot (@{master_username}).</i>",
-                reply_markup=reply_markup,
-                parse_mode="HTML"
-            )
-            return
-
-        try:
-            from telegram import ReplyKeyboardMarkup, KeyboardButton, KeyboardButtonRequestManagedBot
-            keyboard = [[
-                KeyboardButton(
-                    "🤖 Create Managed Bot", 
-                    request_managed_bot=KeyboardButtonRequestManagedBot()
-                )
-            ]]
-            reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-        except ImportError:
-            bot_username = context.bot.username or "GamioBot"
-            reply_markup = InlineKeyboardMarkup([[
-                InlineKeyboardButton("🤖 Create Managed Bot", url=f"https://t.me/newbot/{bot_username}/my_gamio_bot")
-            ]])
+        # Clone URL: if clone, point to master. if master, point to bot creation flow.
+        clone_url = f"https://t.me/{master_username}" if is_clone else f"https://t.me/newbot/{bot_username}/my_gamio_bot"
+        
+        keyboard = [
+            [InlineKeyboardButton("Add me to group", url=f"https://t.me/{bot_username}?startgroup=true")],
+            [
+                InlineKeyboardButton("Clone Bot", url=clone_url),
+                InlineKeyboardButton("Help", callback_data="help")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
         
         await update.message.reply_text(
             "Sup\n\n"
-            "Add me to a group and make me an admin to start playing games.\n\n"
-            "Or create your own managed instance of this bot!",
+            "Add me to a group and make me an admin to start playing games.",
             reply_markup=reply_markup
         )
         return
+
     
 
 

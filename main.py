@@ -5100,6 +5100,22 @@ MINI_GAMES = {
     "typerace": ("Type Race 🏎", "type-race/typerace.html")
 }
 
+# RC4 for score decryption
+def rc4_decrypt(key, data):
+    S = list(range(256))
+    j = 0
+    out = []
+    for i in range(256):
+        j = (j + S[i] + ord(key[i % len(key)])) % 256
+        S[i], S[j] = S[j], S[i]
+    i = j = 0
+    for char in data:
+        i = (i + 1) % 256
+        j = (j + S[i]) % 256
+        S[i], S[j] = S[j], S[i]
+        out.append(chr(ord(char) ^ S[(S[i] + S[j]) % 256]))
+    return "".join(out)
+
 async def html5_game_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle HTML5 Game Callback Queries."""
     query = update.callback_query
@@ -5111,13 +5127,19 @@ async def html5_game_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         host_url = host_url[:-1]
     
     game_id = query.game_short_name
-    # Normalize game_id if needed
+    user_id = query.from_user.id
+    chat_id = query.message.chat_id if query.message else ""
+    message_id = query.message.message_id if query.message else ""
+    inline_msg_id = query.inline_message_id or ""
+    
+    params = f"?user_id={user_id}&chat_id={chat_id}&message_id={message_id}&inline_message_id={inline_msg_id}"
+    
     if game_id in MINI_GAMES:
         _, path = MINI_GAMES[game_id]
-        url = f"{host_url}/html5-games/{path}"
+        url = f"{host_url}/html5-games/{path}{params}"
         await context.bot.answer_callback_query(query.id, url=url)
     elif game_id in ["flappy", "flappy_bird"]: # Aliases
-        url = f"{host_url}/html5-games/flappy-bird/flappybird.html"
+        url = f"{host_url}/html5-games/flappy-bird/flappybird.html{params}"
         await context.bot.answer_callback_query(query.id, url=url)
     else:
         await context.bot.answer_callback_query(query.id, text="Game not found", show_alert=True)
@@ -5268,14 +5290,67 @@ def main() -> None:
     if os.environ.get("DISABLE_FLASK") != "1":
         spawn_saved_clone_bots(token)
 
-    # Set up Flask server for health checks
+    # Set up Flask server for health checks and HTML5 games
     if os.environ.get("DISABLE_FLASK") != "1":
+        from flask import request, jsonify, send_from_directory, render_template_string
+        import base64
+        
         html5_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "html5-games")
         app = Flask(__name__, static_folder=html5_dir, static_url_path="/html5-games")
+        GAME_SECRET = os.environ.get("GAME_SECRET", "gamio-secret-123")
 
         @app.route('/')
         def health_check():
             return "Bot is running!", 200
+
+        @app.route('/html5-games/<path:filename>')
+        def serve_game(filename):
+            if filename.endswith('.html'):
+                # Injected variables for the game
+                try:
+                    with open(os.path.join(html5_dir, filename), 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    # Simple template replacement
+                    content = content.replace("{{ game_secret }}", GAME_SECRET)
+                    return content
+                except Exception as e:
+                    logger.error(f"Error serving game template {filename}: {e}")
+                    return "Game file not found", 404
+            return send_from_directory(html5_dir, filename)
+
+        @app.route('/api/get_leaderboard', methods=['POST'])
+        def get_lb():
+            from leaderboard import get_game_leaderboard
+            lb, _, _ = get_game_leaderboard("html5", 1, 10)
+            leaders = [{"name": name, "score": score} for _, name, score in lb]
+            return jsonify({"ok": True, "leaderboard": leaders})
+
+        @app.route('/api/set_score', methods=['POST'])
+        def set_score():
+            data = request.json
+            if not data or 'payload' not in data:
+                return jsonify({"ok": False, "error": "Missing payload"}), 400
+            
+            try:
+                # Decrypt payload
+                encrypted = base64.b64decode(data['payload']).decode('latin1')
+                decrypted_json = rc4_decrypt(GAME_SECRET, encrypted)
+                score_data = json.loads(decrypted_json)
+                
+                user_id = int(score_data.get('user_id'))
+                score = int(score_data.get('score'))
+                
+                # Persistent save
+                from leaderboard import record_game_scores
+                asyncio.run_coroutine_threadsafe(
+                    record_game_scores([(user_id, score)], "html5", 0, application),
+                    loop=asyncio.get_event_loop()
+                )
+                
+                return jsonify({"ok": True, "score": score})
+            except Exception as e:
+                logger.error(f"Score submission error: {e}")
+                return jsonify({"ok": False, "error": str(e)}), 500
 
         def run_flask():
             # Use PORT environment variable from Render, default to 8080
@@ -5285,7 +5360,7 @@ def main() -> None:
         # Run Flask in a separate daemon thread
         flask_thread = threading.Thread(target=run_flask, daemon=True)
         flask_thread.start()
-        logger.info(f"Health check server started on port {os.environ.get('PORT', 8080)}")
+        logger.info(f"Health check & Game server started on port {os.environ.get('PORT', 8080)}")
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 

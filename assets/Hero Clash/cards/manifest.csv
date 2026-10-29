@@ -1,0 +1,303 @@
+order,name,file,alignment,strength,speed,power,durability,combat,intelligence
+1,A-Bomb,001_1-a-bomb.jpg,good,100,17,24,80,64,38
+2,Abomination,002_4-abomination.jpg,bad,80,53,62,90,95,63
+3,Abraxas,003_5-abraxas.jpg,bad,63,83,100,100,55,88
+4,Absorbing Man,004_6-absorbing-man.jpg,bad,80,25,98,100,64,38
+5,Agent Bob,005_10-agent-bob.jpg,good,8,13,5,5,20,10
+6,Agent Zero,006_11-agent-zero.jpg,good,28,38,72,80,95,75
+7,Air-Walker,007_12-air-walker.jpg,bad,85,100,100,85,40,50
+8,Ajax,008_13-ajax.jpg,bad,48,35,34,80,55,56
+9,Angel,009_24-angel.jpg,good,13,46,28,64,42,63
+10,Angel Dust,010_25-angel-dust.jpg,good,55,23,17,42,30,38
+11,Angel Salvadore,011_26-angel-salvadore.jpg,good,10,28,56,28,60,38
+12,Annihilus,012_29-annihilus.jpg,bad,80,47,59,56,64,75
+13,Ant-Man,013_30-ant-man.jpg,good,18,23,32,28,32,100
+14,Ant-Man II,014_31-ant-man-ii.jpg,good,18,17,53,40,30,75
+15,Anti-Venom,015_34-anti-venom.jpg,-,60,65,96,90,84,75
+16,Apocalypse,016_35-apocalypse.jpg,bad,100,33,100,100,60,100
+17,Arachne,017_39-arachne.jpg,good,48,50,71,70,70,50
+18,Archangel,018_40-archangel.jpg,good,13,58,35,64,42,63
+19,Arclight,019_41-arclight.jpg,bad,63,23,52,42,70,38
+20,Ardina,020_42-ardina.jpg,good,100,100,100,80,25,63
+21,Ares,021_43-ares.jpg,good,82,35,84,80,101,75
+22,Ariel,022_44-ariel.jpg,good,10,12,94,14,28,50
+23,Armor,023_45-armor.jpg,good,63,12,55,80,54,50
+24,Atlas,024_48-atlas.jpg,good,80,25,98,100,50,63
+25,Aurora,025_56-aurora.jpg,good,10,96,74,60,56,63
+26,Azazel,026_57-azazel.jpg,bad,11,47,100,95,80,50
+27,Banshee,027_61-banshee.jpg,good,10,58,63,40,70,50
+28,Bantam,028_62-bantam.jpg,good,53,23,21,54,56,25
+29,Battlestar,029_72-battlestar.jpg,good,53,35,48,74,74,50
+30,Beast,030_75-beast.jpg,good,48,38,43,60,85,94
+31,Beta Ray Bill,031_79-beta-ray-bill.jpg,good,80,35,100,95,84,63
+32,Beyonder,032_80-beyonder.jpg,good,100,100,100,100,84,100
+33,Big Man,033_83-big-man.jpg,bad,12,23,19,28,70,75
+34,Bird-Brain,034_88-bird-brain.jpg,good,10,35,21,28,42,25
+35,Bishop,035_92-bishop.jpg,good,14,23,100,75,65,63
+36,Black Bolt,036_96-black-bolt.jpg,good,67,100,100,84,56,75
+37,Black Cat,037_99-black-cat.jpg,good,16,33,23,10,70,75
+38,Black Knight III,038_102-black-knight-iii.jpg,good,10,8,43,70,70,63
+39,Black Mamba,039_104-black-mamba.jpg,bad,10,35,88,42,65,75
+40,Black Panther,040_106-black-panther.jpg,good,16,30,41,60,100,88
+41,Black Widow,041_107-black-widow.jpg,good,13,33,36,30,100,75
+42,Blackout,042_109-blackout.jpg,bad,32,45,45,80,65,63
+43,Blackwing,043_110-blackwing.jpg,bad,10,35,20,32,56,38
+44,Blackwulf,044_111-blackwulf.jpg,-,28,8,69,30,25,50
+45,Blade,045_112-blade.jpg,good,28,38,40,50,90,63
+46,Bling!,046_114-bling.jpg,good,14,12,52,90,28,69
+47,Blink,047_115-blink.jpg,good,8,20,77,28,64,50
+48,Blizzard II,048_118-blizzard-ii.jpg,bad,10,27,47,42,56,38
+49,Blob,049_119-blob.jpg,bad,83,23,28,95,72,10
+50,Bloodaxe,050_120-bloodaxe.jpg,bad,80,33,100,80,84,63
+51,Bloodhawk,051_121-bloodhawk.jpg,good,10,50,80,80,64,50
+52,Boom-Boom,052_130-boom-boom.jpg,good,10,12,57,42,64,38
+53,Box IV,053_135-box-iv.jpg,good,75,23,11,28,56,50
+54,Bullseye,054_141-bullseye.jpg,bad,11,25,20,70,70,50
+55,Cable,055_145-cable.jpg,good,48,23,100,56,80,88
+56,Callisto,056_146-callisto.jpg,bad,53,23,52,42,85,63
+57,Cannonball,057_148-cannonball.jpg,good,28,67,94,99,56,50
+58,Captain America,058_149-captain-america.jpg,good,19,38,60,55,100,69
+59,Captain Britain,059_151-captain-britain.jpg,good,77,50,31,60,80,75
+60,Captain Marvel,060_157-captain-marvel.jpg,good,88,71,100,95,90,84
+61,Captain Planet,061_160-captain-planet.jpg,good,88,75,100,80,60,50
+62,Carnage,062_162-carnage.jpg,bad,63,70,88,84,90,63
+63,Century,063_167-century.jpg,good,80,53,100,64,100,88
+64,Chamber,064_169-chamber.jpg,good,10,20,57,80,64,50
+65,Changeling,065_171-changeling.jpg,bad,10,23,64,42,64,63
+66,Cloak,066_180-cloak.jpg,good,10,47,100,64,56,63
+67,Colossus,067_185-colossus.jpg,good,83,33,45,100,80,63
+68,Copycat,068_186-copycat.jpg,neutral,10,21,54,25,60,56
+69,Cottonmouth,069_188-cottonmouth.jpg,bad,10,8,27,10,25,50
+70,Crystal,070_191-crystal.jpg,good,16,12,61,14,56,63
+71,Cyclops,071_196-cyclops.jpg,good,10,23,76,42,80,75
+72,Dagger,072_198-dagger.jpg,good,10,35,52,42,70,63
+73,Daredevil,073_201-daredevil.jpg,good,13,25,61,35,100,75
+74,Darkhawk,074_202-darkhawk.jpg,good,32,33,74,70,64,50
+75,Darkstar,075_206-darkstar.jpg,good,8,35,79,42,64,38
+76,Dazzler,076_211-dazzler.jpg,good,10,33,100,60,55,63
+77,Deadpool,077_213-deadpool.jpg,neutral,32,50,100,100,100,69
+78,Deathlok,078_215-deathlok.jpg,good,32,30,40,70,60,69
+79,Demogoblin,079_217-demogoblin.jpg,bad,48,42,67,35,60,50
+80,Destroyer,080_218-destroyer.jpg,bad,95,58,85,98,70,50
+81,Diamondback,081_219-diamondback.jpg,bad,16,23,45,28,60,44
+82,Doc Samson,082_221-doc-samson.jpg,good,80,33,36,80,70,75
+83,Doctor Doom,083_222-doctor-doom.jpg,bad,32,20,100,100,84,100
+84,Doctor Octopus,084_225-doctor-octopus.jpg,bad,48,33,53,40,65,94
+85,Doctor Strange,085_226-doctor-strange.jpg,good,10,12,100,84,60,100
+86,Domino,086_227-domino.jpg,good,10,27,49,28,74,63
+87,Doppelganger,087_231-doppelganger.jpg,bad,63,60,69,95,84,8
+88,Dormammu,088_232-dormammu.jpg,bad,95,83,100,100,80,88
+89,Drax the Destroyer,089_234-drax-the-destroyer.jpg,good,80,25,46,85,65,56
+90,Ego,090_235-ego.jpg,bad,80,83,71,99,28,88
+91,Electro,091_237-electro.jpg,bad,10,50,67,56,64,69
+92,Elektra,092_238-elektra.jpg,good,11,30,59,28,100,63
+93,Emma Frost,093_241-emma-frost.jpg,good,63,35,100,90,42,75
+94,Evil Deadpool,094_247-evil-deadpool.jpg,bad,32,50,100,100,100,69
+95,Evilhawk,095_248-evilhawk.jpg,bad,32,33,85,70,64,50
+96,Exodus,096_249-exodus.jpg,bad,81,28,100,28,70,63
+97,Falcon,097_251-falcon.jpg,good,13,50,22,28,64,38
+98,Fallen One II,098_252-fallen-one-ii.jpg,bad,85,83,100,100,56,88
+99,Feral,099_254-feral.jpg,good,28,45,27,28,70,38
+100,Fin Fang Foom,100_256-fin-fang-foom.jpg,good,81,23,75,100,70,50
+101,Firebird,101_257-firebird.jpg,good,8,40,100,14,42,38
+102,Firelord,102_258-firelord.jpg,good,63,75,52,90,28,38
+103,Firestar,103_259-firestar.jpg,good,8,54,71,55,32,50
+104,Forge,104_268-forge.jpg,good,10,12,25,28,48,63
+105,Franklin Richards,105_269-franklin-richards.jpg,good,80,50,100,60,50,63
+106,Franklin Storm,106_270-franklin-storm.jpg,good,10,1,0,1,10,38
+107,Frenzy,107_271-frenzy.jpg,bad,53,35,38,100,52,63
+108,Galactus,108_273-galactus.jpg,neutral,100,83,100,100,50,100
+109,Gambit,109_274-gambit.jpg,good,10,23,55,28,84,63
+110,Gamora,110_275-gamora.jpg,good,85,42,53,85,100,75
+111,Ghost Rider,111_280-ghost-rider.jpg,good,55,25,100,100,60,50
+112,Gladiator,112_285-gladiator.jpg,neutral,100,100,77,100,70,50
+113,Goblin Queen,113_286-goblin-queen.jpg,bad,10,23,65,28,56,75
+114,Gravity,114_296-gravity.jpg,good,32,33,69,40,30,50
+115,Green Goblin,115_299-green-goblin.jpg,bad,48,38,48,60,50,100
+116,Green Goblin II,116_300-green-goblin-ii.jpg,bad,55,37,44,50,26,75
+117,Groot,117_303-groot.jpg,good,85,33,100,70,64,75
+118,Havok,118_311-havok.jpg,good,10,25,71,60,45,63
+119,Hawkeye,119_313-hawkeye.jpg,good,12,21,29,10,80,56
+120,Hawkeye II,120_314-hawkeye-ii.jpg,good,6,8,24,10,50,50
+121,Hela,121_321-hela.jpg,bad,100,46,100,100,45,63
+122,Hellcat,122_323-hellcat.jpg,good,11,33,46,45,70,63
+123,Hercules,123_325-hercules.jpg,good,100,46,89,85,100,63
+124,Hope Summers,124_330-hope-summers.jpg,good,10,12,93,32,75,63
+125,Hulk,125_332-hulk.jpg,good,100,63,98,100,85,88
+126,Human Torch,126_333-human-torch.jpg,good,11,63,87,70,42,63
+127,Husk,127_335-husk.jpg,good,63,35,48,78,64,63
+128,Hybrid,128_336-hybrid.jpg,good,63,58,100,75,80,63
+129,Hydro-Man,129_337-hydro-man.jpg,bad,13,25,66,80,50,38
+130,Hyperion,130_338-hyperion.jpg,good,100,100,87,95,80,88
+131,Iceman,131_339-iceman.jpg,good,32,53,100,100,64,63
+132,Ink,132_343-ink.jpg,good,28,17,73,40,50,38
+133,Invisible Woman,133_344-invisible-woman.jpg,good,10,27,93,85,56,88
+134,Iron Fist,134_345-iron-fist.jpg,good,55,33,95,50,100,75
+135,Iron Man,135_346-iron-man.jpg,good,85,58,100,85,64,100
+136,Iron Monger,136_347-iron-monger.jpg,bad,63,25,57,90,56,88
+137,Jack of Hearts,137_350-jack-of-hearts.jpg,good,55,100,77,30,30,63
+138,Jean Grey,138_356-jean-grey.jpg,good,80,21,92,20,70,94
+139,Jennifer Kale,139_358-jennifer-kale.jpg,good,10,35,74,42,72,75
+140,Jessica Jones,140_361-jessica-jones.jpg,good,44,50,18,70,55,56
+141,John Wraith,141_369-john-wraith.jpg,good,12,35,87,28,80,75
+142,Jolt,142_371-jolt.jpg,good,12,27,31,32,42,63
+143,Jubilee,143_372-jubilee.jpg,good,8,22,66,20,90,56
+144,Juggernaut,144_374-juggernaut.jpg,neutral,100,42,85,100,70,44
+145,Junkpile,145_375-junkpile.jpg,bad,38,17,81,90,30,50
+146,Justice,146_376-justice.jpg,good,10,33,55,70,30,50
+147,Kang,147_379-kang.jpg,bad,48,58,100,70,70,100
+148,Kingpin,148_391-kingpin.jpg,bad,18,25,13,40,70,75
+149,Klaw,149_392-klaw.jpg,bad,38,33,62,100,60,63
+150,Kraven II,150_394-kraven-ii.jpg,bad,34,23,43,28,85,50
+151,Kraven the Hunter,151_395-kraven-the-hunter.jpg,bad,32,35,25,42,85,63
+152,Lady Deathstrike,152_400-lady-deathstrike.jpg,bad,28,42,48,85,90,63
+153,Leader,153_401-leader.jpg,bad,10,12,59,14,42,100
+154,Leech,154_402-leech.jpg,good,5,12,62,14,14,25
+155,Legion,155_403-legion.jpg,good,100,42,100,30,75,50
+156,Living Brain,156_409-living-brain.jpg,bad,53,35,31,56,28,75
+157,Living Tribunal,157_410-living-tribunal.jpg,neutral,100,100,100,100,30,100
+158,Lizard,158_412-lizard.jpg,bad,51,27,63,70,56,50
+159,Loki,159_414-loki.jpg,bad,63,46,100,85,60,88
+160,Longshot,160_415-longshot.jpg,good,10,27,71,10,70,50
+161,Luke Cage,161_416-luke-cage.jpg,good,63,29,44,95,70,50
+162,Luna,162_419-luna.jpg,good,6,83,53,14,14,38
+163,Mach-IV,163_421-mach-iv.jpg,bad,36,60,60,84,56,75
+164,Machine Man,164_422-machine-man.jpg,good,32,35,51,84,64,63
+165,Magneto,165_423-magneto.jpg,bad,80,27,91,84,80,88
+166,Magus,166_425-magus.jpg,bad,100,70,100,99,74,88
+167,Man-Thing,167_428-man-thing.jpg,good,32,8,100,100,40,50
+168,Man-Wolf,168_429-man-wolf.jpg,good,44,35,45,42,70,63
+169,Mandarin,169_430-mandarin.jpg,bad,28,23,100,28,95,100
+170,Mantis,170_431-mantis.jpg,good,8,33,100,80,80,63
+171,Marvel Girl,171_433-marvel-girl.jpg,good,85,47,100,42,80,63
+172,Maverick,172_438-maverick.jpg,good,10,12,60,42,85,63
+173,Medusa,173_441-medusa.jpg,good,34,35,37,70,56,75
+174,Meltdown,174_442-meltdown.jpg,good,10,12,62,42,64,38
+175,Mephisto,175_443-mephisto.jpg,bad,85,35,100,95,42,88
+176,Mimic,176_452-mimic.jpg,good,67,47,79,56,42,63
+177,Mister Fantastic,177_456-mister-fantastic.jpg,good,10,18,33,70,64,100
+178,Mister Knife,178_458-mister-knife.jpg,bad,10,17,13,30,65,75
+179,Mister Sinister,179_460-mister-sinister.jpg,bad,48,46,100,90,50,100
+180,Mockingbird,180_462-mockingbird.jpg,good,31,38,48,20,95,75
+181,MODOK,181_463-modok.jpg,bad,18,25,79,25,15,100
+182,Molten Man,182_467-molten-man.jpg,bad,73,23,53,84,56,50
+183,Moon Knight,183_470-moon-knight.jpg,good,36,23,28,42,75,50
+184,Moonstone,184_471-moonstone.jpg,bad,67,47,74,52,80,56
+185,Morlun,185_472-morlun.jpg,bad,60,35,74,42,56,63
+186,Moses Magnum,186_474-moses-magnum.jpg,bad,28,12,55,42,56,75
+187,Mr Immortal,187_475-mr-immortal.jpg,good,10,8,69,100,30,50
+188,Ms Marvel II,188_477-ms-marvel-ii.jpg,good,63,23,11,84,56,38
+189,Multiple Man,189_478-multiple-man.jpg,good,11,23,28,70,62,63
+190,Mysterio,190_479-mysterio.jpg,bad,10,17,82,40,70,81
+191,Mystique,191_480-mystique.jpg,bad,12,23,64,64,74,75
+192,Namor,192_481-namor.jpg,good,95,58,73,70,85,69
+193,Namora,193_483-namora.jpg,good,85,42,48,42,64,50
+194,Namorita,194_484-namorita.jpg,good,72,47,37,70,70,50
+195,Nebula,195_487-nebula.jpg,bad,52,13,42,50,60,63
+196,Negasonic Teenage Warhead,196_488-negasonic-teenage-warhead.jpg,good,7,8,45,10,35,50
+197,Nick Fury,197_489-nick-fury.jpg,good,11,23,25,42,100,75
+198,Nightcrawler,198_490-nightcrawler.jpg,good,10,47,76,14,80,50
+199,Northstar,199_495-northstar.jpg,good,18,83,65,56,70,50
+200,Nova,200_496-nova.jpg,good,85,75,100,100,80,100
+201,Nova,201_497-nova.jpg,good,60,100,100,100,35,63
+202,Odin,202_498-odin.jpg,good,83,67,100,95,90,100
+203,One-Above-All,203_503-one-above-all.jpg,neutral,100,100,100,100,100,100
+204,Onslaught,204_504-onslaught.jpg,bad,100,33,100,100,55,88
+205,Phoenix,205_517-phoenix.jpg,good,100,83,100,100,80,100
+206,Plantman,206_518-plantman.jpg,bad,60,25,61,55,25,63
+207,Polaris,207_523-polaris.jpg,good,73,42,100,50,45,63
+208,Professor X,208_527-professor-x.jpg,good,8,12,100,14,32,100
+209,Psylocke,209_529-psylocke.jpg,good,33,25,100,40,90,63
+210,Punisher,210_530-punisher.jpg,good,16,21,42,45,100,69
+211,Purple Man,211_531-purple-man.jpg,bad,10,8,92,30,10,56
+212,Pyro,212_532-pyro.jpg,bad,10,12,54,14,28,38
+213,Quicksilver,213_536-quicksilver.jpg,good,28,100,81,60,56,63
+214,Quill,214_537-quill.jpg,good,10,12,23,14,14,38
+215,Red Hulk,215_547-red-hulk.jpg,neutral,100,47,82,85,75,50
+216,Red Skull,216_550-red-skull.jpg,bad,10,12,19,14,80,75
+217,Rhino,217_556-rhino.jpg,bad,80,43,36,90,85,25
+218,Rocket Raccoon,218_566-rocket-raccoon.jpg,good,5,23,28,28,64,50
+219,Rogue,219_567-rogue.jpg,good,10,12,80,28,80,75
+220,Ronin,220_568-ronin.jpg,good,12,21,13,10,80,56
+221,Sabretooth,221_570-sabretooth.jpg,bad,48,38,50,90,100,56
+222,Sage,222_571-sage.jpg,good,10,12,28,14,56,75
+223,Sandman,223_572-sandman.jpg,neutral,75,46,100,90,60,44
+224,Sasquatch,224_573-sasquatch.jpg,good,80,23,15,56,42,75
+225,Scarlet Spider,225_577-scarlet-spider.jpg,good,53,60,46,74,56,75
+226,Scarlet Spider II,226_578-scarlet-spider-ii.jpg,good,55,60,37,40,56,88
+227,Scarlet Witch,227_579-scarlet-witch.jpg,bad,10,29,100,70,80,100
+228,Scorpia,228_580-scorpia.jpg,bad,28,42,34,28,28,38
+229,Scorpion,229_581-scorpion.jpg,bad,52,60,49,85,80,50
+230,Sebastian Shaw,230_582-sebastian-shaw.jpg,bad,85,12,36,95,56,63
+231,Sentry,231_583-sentry.jpg,neutral,100,100,100,84,40,75
+232,Shadow King,232_584-shadow-king.jpg,good,12,27,100,100,75,75
+233,Shadowcat,233_586-shadowcat.jpg,good,8,21,69,25,70,88
+234,Shang-Chi,234_587-shang-chi.jpg,good,12,30,29,50,100,63
+235,Shatterstar,235_588-shatterstar.jpg,good,48,45,49,64,84,63
+236,She-Hulk,236_589-she-hulk.jpg,good,100,42,40,100,70,81
+237,She-Thing,237_590-she-thing.jpg,good,72,21,23,80,65,69
+238,Shocker,238_591-shocker.jpg,bad,10,23,79,70,56,63
+239,Shriek,239_592-shriek.jpg,good,10,23,45,28,42,50
+240,Sif,240_594-sif.jpg,good,90,67,100,80,70,63
+241,Silk,241_595-silk.jpg,good,48,71,71,70,65,75
+242,Silver Surfer,242_598-silver-surfer.jpg,good,100,100,100,90,32,56
+243,Silverclaw,243_599-silverclaw.jpg,good,28,35,34,42,42,50
+244,Siryn,244_604-siryn.jpg,bad,8,47,50,28,42,38
+245,Skaar,245_605-skaar.jpg,good,85,27,69,90,85,50
+246,Snowbird,246_607-snowbird.jpg,good,32,27,70,42,52,50
+247,Songbird,247_610-songbird.jpg,good,36,27,55,42,56,75
+248,Spider-Girl,248_618-spider-girl.jpg,good,38,60,53,65,75,63
+249,Spider-Gwen,249_619-spider-gwen.jpg,good,55,63,66,70,70,75
+250,Spider-Man,250_620-spider-man.jpg,good,55,67,74,75,85,90
+251,Spider-Woman,251_623-spider-woman.jpg,good,42,42,68,60,70,56
+252,Spider-Woman III,252_625-spider-woman-iii.jpg,good,48,27,60,42,28,50
+253,Spyke,253_628-spyke.jpg,good,12,17,48,60,30,50
+254,Star-Lord,254_630-star-lord.jpg,good,20,33,25,50,70,69
+255,Stardust,255_631-stardust.jpg,good,85,100,100,110,85,88
+256,Storm,256_638-storm.jpg,good,10,47,88,30,75,75
+257,Sunspot,257_640-sunspot.jpg,good,63,35,90,25,70,63
+258,Swarm,258_646-swarm.jpg,bad,18,50,38,90,35,75
+259,Synch,259_648-synch.jpg,good,67,23,74,28,56,75
+260,Taskmaster,260_653-taskmaster.jpg,bad,12,50,63,20,100,75
+261,Tempest,261_654-tempest.jpg,good,10,45,66,28,60,38
+262,Thanos,262_655-thanos.jpg,bad,100,33,100,100,80,100
+263,Thing,263_658-thing.jpg,good,84,21,38,100,80,75
+264,Thor,264_659-thor.jpg,good,100,83,100,100,100,69
+265,Thor Girl,265_660-thor-girl.jpg,good,83,70,100,84,70,75
+266,Thunderbird,266_661-thunderbird.jpg,good,32,27,13,32,70,50
+267,Thunderstrike,267_664-thunderstrike.jpg,good,80,70,42,84,72,63
+268,Thundra,268_665-thundra.jpg,good,81,32,26,64,54,38
+269,Tiger Shark,269_666-tiger-shark.jpg,bad,72,46,51,70,28,38
+270,Tigra,270_667-tigra.jpg,good,32,53,33,38,90,63
+271,Tinkerer,271_668-tinkerer.jpg,bad,10,23,10,14,14,100
+272,Toad,272_670-toad.jpg,neutral,34,58,70,56,28,50
+273,Toxin,273_671-toxin.jpg,good,73,70,82,84,70,56
+274,Toxin,274_672-toxin.jpg,good,80,42,97,85,70,75
+275,Triton,275_677-triton.jpg,good,63,50,35,65,55,56
+276,Ultragirl,276_679-ultragirl.jpg,good,80,35,35,70,80,50
+277,Ultron,277_680-ultron.jpg,bad,83,42,100,100,64,88
+278,Utgard-Loki,278_681-utgard-loki.jpg,bad,80,23,85,84,64,50
+279,Vanisher,279_685-vanisher.jpg,bad,10,75,61,56,42,63
+280,Venom,280_687-venom.jpg,bad,57,65,86,84,84,75
+281,Venom II,281_688-venom-ii.jpg,bad,57,47,54,70,56,50
+282,Venom III,282_689-venom-iii.jpg,bad,73,35,73,90,56,63
+283,Venompool,283_690-venompool.jpg,-,57,63,100,100,100,69
+284,Vindicator,284_693-vindicator.jpg,good,63,53,58,64,70,63
+285,Vision,285_697-vision.jpg,good,72,54,100,95,70,100
+286,Vulture,286_701-vulture.jpg,bad,22,42,26,25,30,75
+287,Walrus,287_702-walrus.jpg,bad,28,8,11,50,20,50
+288,War Machine,288_703-war-machine.jpg,good,80,63,100,100,85,63
+289,Warlock,289_705-warlock.jpg,good,36,79,71,95,95,88
+290,Warpath,290_707-warpath.jpg,good,72,47,26,70,84,38
+291,Wasp,291_708-wasp.jpg,good,17,58,29,52,42,63
+292,Watcher,292_709-watcher.jpg,good,80,67,100,89,56,100
+293,Winter Soldier,293_714-winter-soldier.jpg,good,32,35,60,65,84,56
+294,Wolfsbane,294_716-wolfsbane.jpg,good,16,35,26,42,42,38
+295,Wolverine,295_717-wolverine.jpg,good,32,50,89,100,100,63
+296,Wonder Man,296_719-wonder-man.jpg,good,100,53,64,90,64,75
+297,Wyatt Wingfoot,297_722-wyatt-wingfoot.jpg,good,10,12,1,1,56,10
+298,X-23,298_723-x-23.jpg,good,24,42,55,100,95,75
+299,X-Man,299_724-x-man.jpg,good,53,53,100,95,84,88
+300,Yellowjacket,300_726-yellowjacket.jpg,good,10,12,12,28,14,88
+301,Yellowjacket II,301_727-yellowjacket-ii.jpg,good,10,35,31,28,28,50
+302,Ymir,302_728-ymir.jpg,good,100,27,98,100,28,50

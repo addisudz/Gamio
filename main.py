@@ -65,6 +65,11 @@ from hear_me_out import HearMeOutGame
 from name_the_player import NameThePlayerGame
 from settings_manager import settings_manager
 from who_am_i import WhoAmIGame
+from hero_clash import (
+    HeroClashGame,
+    HEROES_PER_PLAYER,
+    BATTLE_ROUNDS,
+)
 from leaderboard import (
     record_game_scores,
     get_total_leaderboard,
@@ -429,7 +434,7 @@ GAME_CATEGORIES = {
         "games": [("22", "Name the Player")]
     },
     "Card Games": {
-        "games": [("17", "Crazy 8")]
+        "games": [("17", "Crazy 8"), ("29", "Hero Clash")]
     }
 }
 
@@ -460,7 +465,8 @@ GAMES_METADATA = {
     "25": ("Who Am I", "2"),
     "26": ("Song From Lyrics", "2"),
     "27": ("Riddles", "2"),
-    "28": ("Jeopardy", "1")
+    "28": ("Jeopardy", "1"),
+    "29": ("Hero Clash", "2")
 }
 
 # Game Cover Images
@@ -489,7 +495,8 @@ GAME_COVERS = {
     "25": "Who Am I.png",
     "26": "Guess the Song.png",
     "27": "Riddles.png",
-    "28": "Jeopardy.png"
+    "28": "Jeopardy.png",
+    "29": "Hero Clash.png"
 }
 
 
@@ -1077,6 +1084,7 @@ async def handle_game_menu_callback(update: Update, context: ContextTypes.DEFAUL
                 "26": ("Song From Lyrics", "2"),
                 "27": ("Riddles", "2"),
                 "28": ("Jeopardy", "1"),
+                "29": ("Hero Clash", "2"),
             }
             
             game_name, min_players = game_info.get(game_code, ("General Knowledge", "2"))
@@ -1135,7 +1143,8 @@ def get_game_instructions(game_code: str) -> str:
         "25": "<blockquote expandable><b>How to Play:</b>\n‣ Everyone gets a celebrity assigned to them.\n‣ On your turn, others see who you are, but you don't.\n‣ Ask questions in the group to guess your celebrity.\n‣ Once you know, type the name in the chat.\n‣ Shortest time to guess wins!</blockquote>",
         "26": "<blockquote expandable><b>How to Play:</b>\n‣ Guess the Song Title and Artist from the provided lyrics.\n‣ Use the '▶Next Line' button to reveal more lines if needed.\n‣ Each correct part (Title or Artist) earns you 2 points.\n‣ Guess both to complete the round!</blockquote>",
         "27": "<blockquote expandable><b>How to Play:</b>\n‣ Read the riddle and type your answer in the chat.\n‣ Each correct answer earns you 1 point.\n‣ First to answer gets the point!\n‣ Player with the most points wins!</blockquote>",
-        "28": "<blockquote expandable><b>How to Play:</b>\n‣ A turn is assigned to a player to select a category and points (e.g. Geography for 5).\n‣ A question is sent, and players must click the 🔔 inline button to buzz in.\n‣ The first to buzz in gets 15 seconds to type their answer.\n‣ Answers must end with a question mark (?).\n‣ Correct answers earn points, incorrect answers lock you out from buzzing again.</blockquote>"
+        "28": "<blockquote expandable><b>How to Play:</b>\n‣ A turn is assigned to a player to select a category and points (e.g. Geography for 5).\n‣ A question is sent, and players must click the 🔔 inline button to buzz in.\n‣ The first to buzz in gets 15 seconds to type their answer.\n‣ Answers must end with a question mark (?).\n‣ Correct answers earn points, incorrect answers lock you out from buzzing again.</blockquote>",
+        "29": "<blockquote expandable><b>How to Play:</b>\n‣ Each player starts with a 100 point budget.\n‣ Heroes are auctioned one at a time. Tap 💰 Place Bid and choose any amount up to your remaining budget. Highest bid wins.\n‣ You must keep at least 1 point for every hero slot still empty, and every player needs 5 heroes.\n‣ After the auction, 5 battle rounds begin. Each round send one unused hero using the 🦸 Choose Hero button.\n‣ All submitted heroes fight a free-for-all until one survives. The round winner takes 1 win.\n‣ Most round wins after 5 rounds wins the game. Ties go to sudden-death rounds!</blockquote>"
     }
     return instructions.get(game_code, "")
 
@@ -1476,6 +1485,13 @@ async def start_game_after_delay(chat_id: int, context: ContextTypes.DEFAULT_TYP
                 f"\n\n<blockquote><b>Mode:</b>\n"
                 f"Rounds: {rounds}</blockquote>"
             )
+        elif session.game_code == "29":
+            mode_text = (
+                f"\n\n<blockquote><b>Mode:</b>\n"
+                f"Budget: 100 points each\n"
+                f"Heroes per player: 5\n"
+                f"Battle rounds: 5</blockquote>"
+            )
         elif session.game_code == "28":
             session.game.start_game()
             turn_order_names = [session.game.players.get(pid, "Unknown") for pid in session.game.turn_order]
@@ -1569,6 +1585,9 @@ async def start_game_after_delay(chat_id: int, context: ContextTypes.DEFAULT_TYP
         elif session.game_code == "28":
             # Jeopardy
             await start_jeopardy_game(chat_id, context, session)
+        elif session.game_code == "29":
+            # Hero Clash
+            await start_hero_clash_game(chat_id, context, session)
 
 
 
@@ -2515,6 +2534,41 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
                 else:
                     await start_song_round(chat.id, context)
 
+        # Handle Hero Clash bids and text-fallback hero picks
+        elif session.game_code == "29":
+            text = message.text.strip()
+            lower = text.lower()
+
+            if lower.startswith("hc_bid:"):
+                try:
+                    parts = lower.split(":", 2)
+                    if len(parts) == 3:
+                        auction_id = int(parts[1].strip())
+                        amount = int(parts[2].strip())
+                    else:
+                        auction_id = None
+                        amount = int(parts[1].strip())
+                except (ValueError, IndexError):
+                    return
+                await _handle_hero_clash_bid(
+                    update, context, session, amount, auction_id=auction_id
+                )
+            elif lower.startswith("hc_pick:"):
+                try:
+                    parts = lower.split(":", 2)
+                    if len(parts) == 3:
+                        battle_token = int(parts[1].strip())
+                        hero_order = int(parts[2].strip())
+                    else:
+                        battle_token = None
+                        hero_order = int(parts[1].strip())
+                except (ValueError, IndexError):
+                    return
+                await _handle_hero_clash_pick(
+                    update, context, session, hero_order, battle_token=battle_token
+                )
+            return
+
         # Handle Crazy 8 Game
         elif session.game_code == "17":
             # Detect "Draw a card" message from inline query result
@@ -2911,6 +2965,13 @@ async def join_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             await update.message.reply_text(random.choice(QUIRKY_RESPONSES))
         return
     
+    if session.game_code == "29" and session.get_player_count() >= HERO_CLASH_MAX_PLAYERS:
+        await update.message.reply_text(
+            f"⚠️ Hero Clash supports up to {HERO_CLASH_MAX_PLAYERS} players.",
+            parse_mode="HTML",
+        )
+        return
+
     # Add player
     if session.game_code in ["3", "25"]:
         try:
@@ -2962,6 +3023,26 @@ async def end_game(chat_id: int, context: ContextTypes.DEFAULT_TYPE, session) ->
         
         # Clean up
         session.end_game()
+        game_manager.remove_game(chat_id)
+        return
+
+    # Handle Hero Clash (custom final standings)
+    if session.game_code == "29":
+        scoreboard = session.game.get_scoreboard()
+        try:
+            await record_game_scores(scoreboard, session.game_code, chat_id, context)
+        except Exception as e:
+            logger.error(f"Error recording Hero Clash scores: {e}")
+
+        summary = session.game.get_final_summary(html.escape)
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=summary,
+            parse_mode="HTML",
+        )
+
+        session.end_game()
+        cancel_game_tasks(chat_id)
         game_manager.remove_game(chat_id)
         return
 
@@ -4864,6 +4945,11 @@ async def handle_photo_message(update: Update, context: ContextTypes.DEFAULT_TYP
         await process_hear_me_out_photo(update, context, session)
         return
 
+    # Hero Clash inline hero picks arrive as cached photos with a caption.
+    if session.game_code == "29":
+        await process_hero_clash_pick_photo(update, context, session)
+        return
+
     if session.game_code != "12" or not session.game.round_in_progress:
         return
         
@@ -4930,7 +5016,106 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await iq.answer(results, cache_time=5, is_personal=True, next_offset=next_offset)
         return
 
-    # 2. Handle Crazy 8 Cards
+    # 2. Handle Hero Clash bids
+    elif query_text.strip().lower().split(maxsplit=1)[:1] == ["hcbid"]:
+        chat_id, search = _hero_clash_inline_query_args(user.id, query_text, "hcbid")
+        session = _find_hero_clash_session(user.id, chat_id)
+        if not session or not session.game or session.game.phase != "auction":
+            await iq.answer([], cache_time=0, is_personal=True)
+            return
+
+        game = session.game
+        max_bid = game.max_bid(user.id)
+        if max_bid <= 0:
+            await iq.answer([], cache_time=0, is_personal=True)
+            return
+
+        search_filter = (search or "").lower()
+        amounts = [
+            amount
+            for amount in range(1, max_bid + 1)
+            if not search_filter or search_filter in str(amount)
+        ]
+        page = amounts[offset:offset + 50]
+        highest = max(game.current_bids.values()) if game.current_bids else 0
+
+        results = []
+        for amount in page:
+            results.append(
+                InlineQueryResultArticle(
+                    id=f"hcbid_{user.id}_{amount}",
+                    title=f"💰 Bid {amount} point{'s' if amount != 1 else ''}",
+                    description=(
+                        f"Remaining budget: {game.budgets.get(user.id, 0)} · "
+                        f"Max bid: {max_bid}"
+                        + (f" · Highest: {highest}" if highest else "")
+                    ),
+                    input_message_content=InputTextMessageContent(
+                        f"hc_bid:{game.current_auction_id}:{amount}"
+                    ),
+                )
+            )
+
+        next_offset = str(offset + 50) if offset + 50 < len(amounts) else ""
+        await iq.answer(results, cache_time=0, is_personal=True, next_offset=next_offset)
+        return
+
+    # 3. Handle Hero Clash battle picks
+    elif query_text.strip().lower().split(maxsplit=1)[:1] == ["hcpick"]:
+        chat_id, search = _hero_clash_inline_query_args(user.id, query_text, "hcpick")
+        session = _find_hero_clash_session(user.id, chat_id)
+        if (
+            not session
+            or not session.game
+            or session.game.phase not in ("battle", "sudden_death")
+        ):
+            await iq.answer([], cache_time=0, is_personal=True)
+            return
+
+        game = session.game
+        search_filter = (search or "").lower()
+        results = []
+
+        for hero in game.available_heroes(user.id):
+            if search_filter and search_filter not in hero.name.lower():
+                continue
+
+            description = (
+                f"{hero.role.value} · {hero.tier} · "
+                f"STR {hero.stats.strength} · SPD {hero.stats.speed} · "
+                f"PWR {hero.stats.power}"
+            )
+            file_id = hero.card_file_id or game.card_file_ids.get(hero.order)
+
+            if file_id:
+                results.append(
+                    InlineQueryResultCachedPhoto(
+                        id=f"hcpick_{user.id}_{hero.order}",
+                        photo_file_id=file_id,
+                        title=f"🦸 {hero.name}",
+                        description=description,
+                        caption=(
+                            f"hc_pick:{game.battle_token}:{hero.order}\n"
+                            f"🦸 {hero.name} · {hero.role.value} ({hero.tier})"
+                        ),
+                    )
+                )
+            else:
+                results.append(
+                    InlineQueryResultArticle(
+                        id=f"hcpick_{user.id}_{hero.order}",
+                        title=f"🦸 {hero.name}",
+                        description=description,
+                        input_message_content=InputTextMessageContent(
+                            f"hc_pick:{game.battle_token}:{hero.order}"
+                        ),
+                    )
+                )
+
+        await iq.answer(results, cache_time=0, is_personal=True)
+        return
+
+    # 4. Handle Crazy 8 Cards
     elif query_text.startswith("c8"):
         cache = get_sticker_cache()
         asyncio.create_task(ensure_stickers_cached(context))
@@ -5787,6 +5972,614 @@ async def handle_c8_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     """Legacy/Simplified button handler. Viewing hands is now via inline queries."""
     query = update.callback_query
     await query.answer("Use the 'Play / Draw' button to interact!", show_alert=True)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# HERO CLASH
+# ════════════════════════════════════════════════════════════════════════════
+
+HERO_CLASH_ROOT = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "assets",
+    "Hero Clash",
+)
+HERO_CLASH_AUCTION_SECONDS = 20
+HERO_CLASH_BATTLE_SECONDS = 35
+HERO_CLASH_MAX_PLAYERS = 8
+
+
+def _hc_card_path(hero) -> str:
+    return os.path.join(HERO_CLASH_ROOT, "cards", hero.card_file)
+
+
+def _hc_mention(user_id: int, name: str) -> str:
+    return f'<a href="tg://user?id={user_id}">{html.escape(name)}</a>'
+
+
+def _hc_budget_block(game) -> str:
+    lines = []
+    for user_id, name in game.players.items():
+        lines.append(
+            f"{_hc_mention(user_id, name)} — "
+            f"<b>{game.budgets.get(user_id, 0)}</b> pts · "
+            f"{len(game.rosters.get(user_id, []))}/{HEROES_PER_PLAYER} heroes"
+        )
+    return "\n".join(lines)
+
+
+def _hc_trim_log(lines: List[str], max_chars: int = 2800) -> List[str]:
+    """Keep a battle log under Telegram's message limit."""
+    text = "\n".join(lines)
+    if len(text) <= max_chars:
+        return lines
+
+    head: List[str] = []
+    tail: List[str] = []
+    used = 0
+    for line in lines[:18]:
+        head.append(line)
+        used += len(line) + 1
+
+    for line in reversed(lines[-18:]):
+        if used + len(line) + 1 > max_chars:
+            break
+        tail.append(line)
+        used += len(line) + 1
+
+    tail.reverse()
+    return head + ["… battle continues …"] + tail
+
+
+def _find_hero_clash_session(user_id: int, chat_id: Optional[int] = None):
+    """Find the Hero Clash session a user is currently playing in."""
+    if chat_id is not None:
+        session = game_manager.get_game(chat_id)
+        if (
+            session
+            and session.game_code == "29"
+            and session.game
+            and user_id in session.players
+        ):
+            return session
+        return None
+
+    candidates = [
+        session
+        for session in game_manager.active_games.values()
+        if session.game_code == "29"
+        and session.game
+        and user_id in session.players
+    ]
+    for session in candidates:
+        if session.game.phase in ("auction", "battle", "sudden_death"):
+            return session
+    return candidates[0] if candidates else None
+
+
+def _hero_clash_inline_query_args(user_id: int, raw_query: str, command: str):
+    """Parse `command [chat_id] [search]` from a Hero Clash inline query."""
+    parts = raw_query.strip().split(maxsplit=1)
+    first = parts[0].lower() if parts else ""
+    if first != command:
+        return None, None
+
+    rest = parts[1].strip() if len(parts) > 1 else ""
+    chat_id = None
+    search = rest
+
+    if rest:
+        rest_parts = rest.split(maxsplit=1)
+        first_token = rest_parts[0]
+        try:
+            possible_chat_id = int(first_token)
+        except ValueError:
+            possible_chat_id = None
+        if possible_chat_id is not None and _find_hero_clash_session(user_id, possible_chat_id):
+            chat_id = possible_chat_id
+            search = rest_parts[1].strip() if len(rest_parts) > 1 else ""
+
+    return chat_id, search
+
+
+async def start_hero_clash_game(chat_id: int, context: ContextTypes.DEFAULT_TYPE, session) -> None:
+    """Start Hero Clash: draft heroes, then battle."""
+    if not session.game.start_game():
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="❌ Could not start Hero Clash. Not enough players or hero data is missing.",
+            parse_mode="HTML",
+        )
+        session.end_game()
+        game_manager.remove_game(chat_id)
+        return
+
+    player_count = session.get_player_count()
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=(
+            "🦸 <b>HERO CLASH STARTED!</b> 🦸\n\n"
+            f"👥 Players: <b>{player_count}</b>\n"
+            f"💰 Budget: <b>100 points</b> each\n"
+            f"🃏 Heroes needed: <b>{HEROES_PER_PLAYER}</b> per player\n"
+            f"⚔️ Battle rounds: <b>{BATTLE_ROUNDS}</b>\n\n"
+            "<blockquote>Heroes will now be auctioned one at a time. "
+            "Highest bid wins the hero. Keep at least 1 point for every "
+            "hero slot you still need to fill.</blockquote>"
+        ),
+        parse_mode="HTML",
+    )
+    await asyncio.sleep(2)
+    await start_hero_clash_auction(chat_id, context, session)
+
+
+async def start_hero_clash_auction(chat_id: int, context: ContextTypes.DEFAULT_TYPE, session) -> None:
+    """Present the next hero for auction."""
+    game = session.game
+
+    if game.is_drafted():
+        await start_hero_clash_battle(chat_id, context, session)
+        return
+
+    hero = game.next_auction()
+    if not hero:
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="❌ Could not find another hero to auction.",
+            parse_mode="HTML",
+        )
+        session.end_game()
+        game_manager.remove_game(chat_id)
+        return
+
+    auction_id = game.current_auction_id
+    remaining_slots = sum(
+        HEROES_PER_PLAYER - len(game.rosters.get(uid, []))
+        for uid in game.players
+    )
+    active = game.active_bidders()
+    global_max = max((game.max_bid(uid) for uid in active), default=0)
+
+    caption = (
+        f"🦸 <b>HERO AUCTION</b> — hero {game.auction_num}\n"
+        f"📦 Draft slots still open: <b>{remaining_slots}</b>\n\n"
+        f"👤 <b>{html.escape(hero.name)}</b> · {html.escape(hero.team.title())}\n"
+        f"🎭 {hero.role.value} · ⭐ Tier {hero.tier} · 📊 {hero.base_score:.0f}\n\n"
+        f"<blockquote>{html.escape(hero.stat_line())}</blockquote>\n"
+        f"💰 Highest bid wins. Bids: <b>1–{global_max}</b> "
+        f"(your max depends on your remaining budget).\n"
+        f"🔒 Reserve at least 1 point for every hero slot still open.\n"
+        f"⏳ <b>{HERO_CLASH_AUCTION_SECONDS}s</b> — tap the button below to bid.\n\n"
+        f"<blockquote expandable><b>Budgets</b>\n{_hc_budget_block(game)}</blockquote>"
+    )
+    keyboard = InlineKeyboardMarkup(
+        [[
+            InlineKeyboardButton(
+                "💰 Place Bid",
+                switch_inline_query_current_chat=f"hcbid {chat_id}",
+            )
+        ]]
+    )
+
+    card_path = _hc_card_path(hero)
+    try:
+        with open(card_path, "rb") as photo:
+            message = await context.bot.send_photo(
+                chat_id=chat_id,
+                photo=photo,
+                caption=caption,
+                reply_markup=keyboard,
+                parse_mode="HTML",
+            )
+        if message.photo:
+            file_id = message.photo[-1].file_id
+            hero.card_file_id = file_id
+            game.card_file_ids[hero.order] = file_id
+    except Exception as exc:
+        logger.error(f"Hero Clash card send failed: {exc}")
+        try:
+            with open(os.path.join(HERO_CLASH_ROOT, "avatars", hero.avatar_file), "rb") as photo:
+                message = await context.bot.send_photo(
+                    chat_id=chat_id,
+                    photo=photo,
+                    caption=caption,
+                    reply_markup=keyboard,
+                    parse_mode="HTML",
+                )
+            if message.photo:
+                file_id = message.photo[-1].file_id
+                hero.card_file_id = file_id
+                game.card_file_ids[hero.order] = file_id
+        except Exception:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=caption,
+                reply_markup=keyboard,
+                parse_mode="HTML",
+            )
+
+    track_game_task(
+        chat_id,
+        asyncio.create_task(
+            hero_clash_auction_timer(chat_id, context, session, auction_id)
+        ),
+    )
+
+
+async def hero_clash_auction_timer(
+    chat_id: int,
+    context: ContextTypes.DEFAULT_TYPE,
+    session,
+    auction_id: int,
+) -> None:
+    await asyncio.sleep(HERO_CLASH_AUCTION_SECONDS)
+
+    session = game_manager.get_game(chat_id)
+    if not session or session.game_code != "29" or not session.game:
+        return
+    game = session.game
+    if game.phase != "auction" or game.current_auction_id != auction_id:
+        return
+
+    await resolve_hero_clash_auction(chat_id, context, session, auction_id=auction_id)
+
+
+async def resolve_hero_clash_auction(
+    chat_id: int,
+    context: ContextTypes.DEFAULT_TYPE,
+    session,
+    auction_id: Optional[int] = None,
+) -> None:
+    game = session.game
+    if auction_id is not None and game.current_auction_id != auction_id:
+        return
+    if game.phase != "auction":
+        return
+
+    result = game.close_auction()
+    if not result:
+        return
+
+    hero = result["hero"]
+    winner_id = result["winner_id"]
+    winner_name = game.players.get(winner_id, "Player")
+    mention = _hc_mention(winner_id, winner_name)
+
+    if result["is_auto"]:
+        line = (
+            f"⏰ <b>No bids!</b> {mention} gets "
+            f"<b>{html.escape(hero.name)}</b> for 1 point."
+        )
+    else:
+        line = (
+            f"🏆 {mention} wins <b>{html.escape(hero.name)}</b> "
+            f"for <b>{result['price']}</b> points!"
+        )
+
+    if len(result["tied"]) > 1:
+        line += (
+            f"\n<i>{len(result['tied'])} players tied at the highest bid — "
+            "the winner was chosen randomly.</i>"
+        )
+
+    line += (
+        f"\n💰 Remaining budget: <b>{result['budget_left']}</b> · "
+        f"Heroes: <b>{result['roster_size']}/{HEROES_PER_PLAYER}</b>"
+    )
+
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=line + f"\n\n<blockquote expandable>{_hc_budget_block(game)}</blockquote>",
+        parse_mode="HTML",
+    )
+
+    await asyncio.sleep(2)
+
+    if game.is_drafted():
+        await start_hero_clash_battle(chat_id, context, session)
+    else:
+        await start_hero_clash_auction(chat_id, context, session)
+
+
+async def _handle_hero_clash_bid(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    session,
+    amount: int,
+    auction_id: Optional[int] = None,
+) -> None:
+    message = update.effective_message
+    user = update.effective_user
+    game = session.game
+
+    if update.effective_chat.id != session.chat_id:
+        await message.reply_text(
+            "⚠️ Place Hero Clash bids in the group where the game is running.",
+            parse_mode="HTML",
+        )
+        return
+
+    success, text = game.place_bid(user.id, amount, auction_id=auction_id)
+    if not success:
+        await message.reply_text(f"⚠️ {text}", parse_mode="HTML")
+        return
+
+    highest = max(game.current_bids.values()) if game.current_bids else amount
+    name = game.players.get(user.id, user.first_name or "Player")
+    await message.reply_text(
+        f"💰 {_hc_mention(user.id, name)} bids <b>{amount}</b>! "
+        f"(Highest: <b>{highest}</b>)",
+        parse_mode="HTML",
+    )
+
+    # Keep the auction tidy by removing the raw "hc_bid:..." marker message.
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+
+async def start_hero_clash_battle(chat_id: int, context: ContextTypes.DEFAULT_TYPE, session) -> None:
+    game = session.game
+    game.begin_battle()
+
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=(
+            "⚔️ <b>THE AUCTION IS OVER — BATTLE BEGINS!</b> ⚔️\n\n"
+            f"Everyone has <b>{HEROES_PER_PLAYER}</b> heroes. "
+            f"There will be <b>{BATTLE_ROUNDS}</b> rounds.\n\n"
+            "<blockquote>Each round, every player sends one unused hero. "
+            "All heroes fight a free-for-all until one survives. "
+            "The round winner earns 1 win. Most wins after 5 rounds takes "
+            "the crown. A tie goes to sudden death.</blockquote>"
+        ),
+        parse_mode="HTML",
+    )
+    await asyncio.sleep(3)
+    await start_hero_clash_battle_round(chat_id, context, session)
+
+
+async def start_hero_clash_battle_round(chat_id: int, context: ContextTypes.DEFAULT_TYPE, session) -> None:
+    game = session.game
+    if game.phase == "finished":
+        await end_game(chat_id, context, session)
+        return
+    if not game.start_battle_round():
+        return
+
+    token = game.battle_token
+    is_sudden_death = game.phase == "sudden_death"
+    if is_sudden_death:
+        label = f"⚡ SUDDEN DEATH {game.sudden_death_count}"
+    else:
+        label = f"ROUND {game.round_num}/{BATTLE_ROUNDS}"
+
+    pickers = ", ".join(
+        _hc_mention(uid, game.players.get(uid, "Player"))
+        for uid in game.required_pickers
+    )
+    roster_lines = []
+    for uid in game.required_pickers:
+        available = game.available_heroes(uid)
+        used = len(game.rosters.get(uid, [])) - len(available)
+        roster_lines.append(
+            f"{_hc_mention(uid, game.players.get(uid, 'Player'))} — "
+            f"{len(available)} available"
+            + (f" · {used} used" if not is_sudden_death else "")
+        )
+
+    if is_sudden_death:
+        instruction = (
+            "The players tied at the top of the table may reuse any owned hero. "
+            "Send one hero each — the winner takes the crown!"
+        )
+    else:
+        instruction = (
+            "Send one <b>unused</b> hero. Heroes already sent cannot fight again."
+        )
+
+    keyboard = InlineKeyboardMarkup(
+        [[
+            InlineKeyboardButton(
+                "🦸 Choose Hero",
+                switch_inline_query_current_chat=f"hcpick {chat_id}",
+            )
+        ]]
+    )
+
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=(
+            f"⚔️ <b>{label}</b>\n\n"
+            f"{instruction}\n\n"
+            f"👉 Picking: {pickers}\n\n"
+            f"<blockquote expandable><b>Your heroes</b>\n"
+            f"{chr(10).join(roster_lines)}</blockquote>\n\n"
+            f"⏳ <b>{HERO_CLASH_BATTLE_SECONDS}s</b> to pick. "
+            "Tap the button and select a hero."
+        ),
+        reply_markup=keyboard,
+        parse_mode="HTML",
+    )
+
+    track_game_task(
+        chat_id,
+        asyncio.create_task(
+            hero_clash_battle_timer(chat_id, context, session, token)
+        ),
+    )
+
+
+async def hero_clash_battle_timer(
+    chat_id: int,
+    context: ContextTypes.DEFAULT_TYPE,
+    session,
+    token: int,
+) -> None:
+    await asyncio.sleep(HERO_CLASH_BATTLE_SECONDS)
+
+    session = game_manager.get_game(chat_id)
+    if not session or session.game_code != "29" or not session.game:
+        return
+    game = session.game
+    if game.battle_token != token:
+        return
+    if game.phase not in ("battle", "sudden_death") or game.battle_resolving:
+        return
+
+    auto_picked = game.auto_pick_missing()
+    if auto_picked:
+        lines = ["⏰ <b>Time's up!</b> Auto-picked for:"]
+        for uid, hero in auto_picked:
+            lines.append(
+                f"• {_hc_mention(uid, game.players.get(uid, 'Player'))} — "
+                f"<b>{html.escape(hero.name)}</b>"
+            )
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="\n".join(lines),
+            parse_mode="HTML",
+        )
+
+    if game.all_picks_in():
+        await resolve_hero_clash_battle_round(chat_id, context, session)
+
+
+async def _handle_hero_clash_pick(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    session,
+    hero_order: int,
+    battle_token: Optional[int] = None,
+) -> None:
+    message = update.effective_message
+    user = update.effective_user
+    game = session.game
+
+    if update.effective_chat.id != session.chat_id:
+        await message.reply_text(
+            "⚠️ Pick your Hero Clash hero in the group where the game is running.",
+            parse_mode="HTML",
+        )
+        return
+
+    success, text = game.submit_pick(
+        user.id, hero_order, battle_token=battle_token
+    )
+    if not success:
+        await message.reply_text(f"⚠️ {text}", parse_mode="HTML")
+        return
+
+    name = game.players.get(user.id, user.first_name or "Player")
+    await message.reply_text(
+        f"✅ {_hc_mention(user.id, name)} — {html.escape(text)}",
+        parse_mode="HTML",
+    )
+
+    # Only the text fallback leaves a raw marker; photo picks are already pretty.
+    if message.text:
+        try:
+            await message.delete()
+        except Exception:
+            pass
+
+    if game.all_picks_in():
+        game.battle_token += 1
+        await asyncio.sleep(0.5)
+        await resolve_hero_clash_battle_round(update.effective_chat.id, context, session)
+
+
+async def resolve_hero_clash_battle_round(chat_id: int, context: ContextTypes.DEFAULT_TYPE, session) -> None:
+    game = session.game
+    result = game.resolve_battle_round()
+    if not result:
+        return
+
+    game.battle_token += 1
+
+    winner_id = result["winner_id"]
+    winner_name = game.players.get(winner_id, "Player")
+    winner_mention = _hc_mention(winner_id, winner_name)
+
+    lines = [
+        f"⚔️ <b>{html.escape(result['label'])} RESULT</b>",
+        "",
+        f"🏅 <b>{winner_mention} wins the round with "
+        f"{html.escape(result['winner_hero'])}!</b>",
+        "",
+        "<blockquote><b>Sent to battle</b>",
+    ]
+    for uid, hero_name in result["picks"].items():
+        lines.append(
+            f"{_hc_mention(uid, game.players.get(uid, 'Player'))} — "
+            f"{html.escape(hero_name)}"
+        )
+    lines.append("</blockquote>")
+    lines.append("")
+    lines.append("<blockquote expandable><b>Battle log</b>")
+    for log_line in _hc_trim_log(result["log_lines"]):
+        lines.append(html.escape(log_line))
+    lines.append("</blockquote>")
+    lines.append("")
+    lines.append("<blockquote><b>Round wins</b>")
+    for uid in game.get_standings():
+        wins = game.wins.get(uid, 0)
+        lines.append(
+            f"{_hc_mention(uid, game.players.get(uid, 'Player'))} — <b>{wins}</b>"
+        )
+    lines.append("</blockquote>")
+
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text="\n".join(lines),
+        parse_mode="HTML",
+    )
+
+    await asyncio.sleep(4)
+
+    if game.phase == "finished":
+        await end_game(chat_id, context, session)
+    elif game.phase == "sudden_death":
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=(
+                "⚡ <b>SUDDEN DEATH!</b>\n\n"
+                "The leaders are tied. Tied players may reuse any owned hero — "
+                "next round decides it!"
+            ),
+            parse_mode="HTML",
+        )
+        await asyncio.sleep(2)
+        await start_hero_clash_battle_round(chat_id, context, session)
+    else:
+        await start_hero_clash_battle_round(chat_id, context, session)
+
+
+async def process_hero_clash_pick_photo(update: Update, context: ContextTypes.DEFAULT_TYPE, session) -> None:
+    """Handle a hero chosen through an inline cached-photo result."""
+    message = update.effective_message
+    caption = (message.caption or "").strip()
+    if not caption:
+        return
+
+    first_line = caption.splitlines()[0].strip().lower()
+    if not first_line.startswith("hc_pick:"):
+        return
+
+    try:
+        parts = first_line.split(":", 2)
+        if len(parts) == 3:
+            battle_token = int(parts[1].strip())
+            hero_order = int(parts[2].strip())
+        else:
+            battle_token = None
+            hero_order = int(parts[1].strip())
+    except (ValueError, IndexError):
+        return
+
+    await _handle_hero_clash_pick(
+        update, context, session, hero_order, battle_token=battle_token
+    )
 
 
 async def leaderboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

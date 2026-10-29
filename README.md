@@ -55,6 +55,7 @@ Powerful Telegram bot designed to host and manage games in group chats.
 
 - **UNO**: A fully-featured digital version of the world-famous card game.
 - **Crazy 8**: Match ranks or suits to clear your hand in this classic strategic card game.
+- **Hero Clash**: Auction Marvel heroes with a 100-point budget, then battle in five hero-vs-hero rounds.
 
 </details>
 

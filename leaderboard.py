@@ -37,6 +37,7 @@ GAME_CODE_NAMES: Dict[str, str] = {
     "24": "UNO",
     "26": "Song From Lyrics",
     "27": "Riddles",
+    "29": "Hero Clash",
 }
 
 # Games that don't use a standard scoreboard (skip recording)

@@ -1144,7 +1144,7 @@ def get_game_instructions(game_code: str) -> str:
         "26": "<blockquote expandable><b>How to Play:</b>\n‣ Guess the Song Title and Artist from the provided lyrics.\n‣ Use the '▶Next Line' button to reveal more lines if needed.\n‣ Each correct part (Title or Artist) earns you 2 points.\n‣ Guess both to complete the round!</blockquote>",
         "27": "<blockquote expandable><b>How to Play:</b>\n‣ Read the riddle and type your answer in the chat.\n‣ Each correct answer earns you 1 point.\n‣ First to answer gets the point!\n‣ Player with the most points wins!</blockquote>",
         "28": "<blockquote expandable><b>How to Play:</b>\n‣ A turn is assigned to a player to select a category and points (e.g. Geography for 5).\n‣ A question is sent, and players must click the 🔔 inline button to buzz in.\n‣ The first to buzz in gets 15 seconds to type their answer.\n‣ Answers must end with a question mark (?).\n‣ Correct answers earn points, incorrect answers lock you out from buzzing again.</blockquote>",
-        "29": "<blockquote expandable><b>How to Play:</b>\n‣ Each player starts with a 100 point budget.\n‣ Heroes are auctioned one at a time. Tap 💰 Place Bid and choose any amount up to your remaining budget. Highest bid wins.\n‣ You must keep at least 1 point for every hero slot still empty, and every player needs 5 heroes.\n‣ After the auction, 5 battle rounds begin. Each round send one unused hero using the 🦸 Choose Hero button.\n‣ All submitted heroes fight a free-for-all until one survives. The round winner takes 1 win.\n‣ Most round wins after 5 rounds wins the game. Ties go to sudden-death rounds!</blockquote>"
+        "29": "<blockquote expandable><b>How to Play:</b>\n‣ Start with 100 points.\n‣ Bid on heroes one at a time. Highest bid wins.\n‣ Keep 1 point for each hero slot still open.\n‣ Every player needs 5 heroes.\n‣ Then play 5 rounds. Send one unused hero each round.\n‣ Most round wins takes the game. Ties go to sudden death.</blockquote>"
     }
     return instructions.get(game_code, "")
 
@@ -2967,7 +2967,7 @@ async def join_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     
     if session.game_code == "29" and session.get_player_count() >= HERO_CLASH_MAX_PLAYERS:
         await update.message.reply_text(
-            f"⚠️ Hero Clash supports up to {HERO_CLASH_MAX_PLAYERS} players.",
+            f"Hero Clash allows up to {HERO_CLASH_MAX_PLAYERS} players.",
             parse_mode="HTML",
         )
         return
@@ -5044,11 +5044,11 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             results.append(
                 InlineQueryResultArticle(
                     id=f"hcbid_{user.id}_{amount}",
-                    title=f"💰 Bid {amount} point{'s' if amount != 1 else ''}",
+                    title=f"Bid {amount} point{'s' if amount != 1 else ''}",
                     description=(
-                        f"Remaining budget: {game.budgets.get(user.id, 0)} · "
+                        f"Budget left: {game.budgets.get(user.id, 0)} | "
                         f"Max bid: {max_bid}"
-                        + (f" · Highest: {highest}" if highest else "")
+                        + (f" | Highest: {highest}" if highest else "")
                     ),
                     input_message_content=InputTextMessageContent(
                         f"hc_bid:{game.current_auction_id}:{amount}"
@@ -5088,19 +5088,21 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
                     InlineQueryResultCachedPhoto(
                         id=f"hcpick_{user.id}_{hero.order}",
                         photo_file_id=file_id,
-                        title=f"🦸 {hero.name}",
+                        title=hero.name,
                         description=description,
                         caption=(
-                            f"hc_pick:{game.battle_token}:{hero.order}\n"
-                            f"🦸 {hero.name}"
+                            f"<tg-spoiler>hc_pick:{game.battle_token}:"
+                            f"{hero.order}</tg-spoiler>\n"
+                            f"{html.escape(hero.name)}"
                         ),
+                        parse_mode="HTML",
                     )
                 )
             else:
                 results.append(
                     InlineQueryResultArticle(
                         id=f"hcpick_{user.id}_{hero.order}",
-                        title=f"🦸 {hero.name}",
+                        title=hero.name,
                         description=description,
                         input_message_content=InputTextMessageContent(
                             f"hc_pick:{game.battle_token}:{hero.order}"
@@ -5998,8 +6000,8 @@ def _hc_budget_block(game) -> str:
     lines = []
     for user_id, name in game.players.items():
         lines.append(
-            f"{_hc_mention(user_id, name)} — "
-            f"<b>{game.budgets.get(user_id, 0)}</b> pts · "
+            f"{_hc_mention(user_id, name)}: "
+            f"<b>{game.budgets.get(user_id, 0)}</b> pts, "
             f"{len(game.rosters.get(user_id, []))}/{HEROES_PER_PLAYER} heroes"
         )
     return "\n".join(lines)
@@ -6025,7 +6027,7 @@ def _hc_trim_log(lines: List[str], max_chars: int = 2800) -> List[str]:
         used += len(line) + 1
 
     tail.reverse()
-    return head + ["… battle continues …"] + tail
+    return head + ["Battle continues."] + tail
 
 
 def _find_hero_clash_session(user_id: int, chat_id: Optional[int] = None):
@@ -6084,7 +6086,7 @@ async def start_hero_clash_game(chat_id: int, context: ContextTypes.DEFAULT_TYPE
     if not session.game.start_game():
         await context.bot.send_message(
             chat_id=chat_id,
-            text="❌ Could not start Hero Clash. Not enough players or hero data is missing.",
+            text="Could not start Hero Clash. Not enough players or hero data is missing.",
             parse_mode="HTML",
         )
         session.end_game()
@@ -6095,14 +6097,13 @@ async def start_hero_clash_game(chat_id: int, context: ContextTypes.DEFAULT_TYPE
     await context.bot.send_message(
         chat_id=chat_id,
         text=(
-            "🦸 <b>HERO CLASH STARTED!</b> 🦸\n\n"
-            f"👥 Players: <b>{player_count}</b>\n"
-            f"💰 Budget: <b>100 points</b> each\n"
-            f"🃏 Heroes needed: <b>{HEROES_PER_PLAYER}</b> per player\n"
-            f"⚔️ Battle rounds: <b>{BATTLE_ROUNDS}</b>\n\n"
-            "<blockquote>Heroes will now be auctioned one at a time. "
-            "Highest bid wins the hero. Keep at least 1 point for every "
-            "hero slot you still need to fill.</blockquote>"
+            "<b>Hero Clash started</b>\n\n"
+            f"Players: {player_count}\n"
+            f"Budget: 100 points each\n"
+            f"Heroes: {HEROES_PER_PLAYER} per player\n"
+            f"Rounds: {BATTLE_ROUNDS}\n\n"
+            "Heroes are auctioned one at a time. Highest bid wins. "
+            "Keep 1 point for each hero slot still open."
         ),
         parse_mode="HTML",
     )
@@ -6122,7 +6123,7 @@ async def start_hero_clash_auction(chat_id: int, context: ContextTypes.DEFAULT_T
     if not hero:
         await context.bot.send_message(
             chat_id=chat_id,
-            text="❌ Could not find another hero to auction.",
+            text="Could not find another hero to auction.",
             parse_mode="HTML",
         )
         session.end_game()
@@ -6131,17 +6132,16 @@ async def start_hero_clash_auction(chat_id: int, context: ContextTypes.DEFAULT_T
 
     auction_id = game.current_auction_id
     caption = (
-        f"🦸 <b>HERO AUCTION</b> — hero {game.auction_num}\n\n"
-        f"👤 <b>{html.escape(hero.name)}</b>\n"
-        f"<blockquote>{html.escape(hero.stat_line())}</blockquote>\n\n"
-        f"<blockquote expandable><b>Budgets</b>\n{_hc_budget_block(game)}</blockquote>\n\n"
-        f"⏳ <b>{HERO_CLASH_AUCTION_SECONDS}s</b> — tap below to bid.\n"
-        f"<i>Every bid adds {HERO_CLASH_AUCTION_EXTENSION_SECONDS}s.</i>"
+        f"<b>Hero {game.auction_num}: {html.escape(hero.name)}</b>\n"
+        f"{html.escape(hero.stat_line())}\n\n"
+        f"<b>Budgets</b>\n{_hc_budget_block(game)}\n\n"
+        f"Bid within {HERO_CLASH_AUCTION_SECONDS}s. "
+        f"Each bid adds {HERO_CLASH_AUCTION_EXTENSION_SECONDS}s."
     )
     keyboard = InlineKeyboardMarkup(
         [[
             InlineKeyboardButton(
-                "💰 Place Bid",
+                "Place Bid",
                 switch_inline_query_current_chat=f"hcbid {chat_id}",
             )
         ]]
@@ -6243,8 +6243,8 @@ async def resolve_hero_clash_auction(
         await context.bot.send_message(
             chat_id=chat_id,
             text=(
-                f"⏭️ <b>No bids for {html.escape(hero.name)}.</b>\n"
-                "That hero is skipped — moving on to the next one."
+                f"No bids for <b>{html.escape(hero.name)}</b>. "
+                "Skipping to the next hero."
             ),
             parse_mode="HTML",
         )
@@ -6260,19 +6260,19 @@ async def resolve_hero_clash_auction(
     mention = _hc_mention(winner_id, winner_name)
 
     line = (
-        f"🏆 {mention} wins <b>{html.escape(hero.name)}</b> "
-        f"for <b>{result['price']}</b> points!"
+        f"{mention} wins <b>{html.escape(hero.name)}</b> "
+        f"for <b>{result['price']}</b> points."
     )
 
     if len(result["tied"]) > 1:
         line += (
-            f"\n<i>{len(result['tied'])} players tied at the highest bid — "
-            "the winner was chosen randomly.</i>"
+            f"\n<i>{len(result['tied'])} players tied. "
+            "Winner chosen randomly.</i>"
         )
 
     line += (
-        f"\n💰 Remaining budget: <b>{result['budget_left']}</b> · "
-        f"Heroes: <b>{result['roster_size']}/{HEROES_PER_PLAYER}</b>"
+        f"\nBudget left: <b>{result['budget_left']}</b>. "
+        f"Heroes: <b>{result['roster_size']}/{HEROES_PER_PLAYER}</b>."
     )
 
     await context.bot.send_message(
@@ -6302,23 +6302,23 @@ async def _handle_hero_clash_bid(
 
     if update.effective_chat.id != session.chat_id:
         await message.reply_text(
-            "⚠️ Place Hero Clash bids in the group where the game is running.",
+            "Place Hero Clash bids in the game group.",
             parse_mode="HTML",
         )
         return
 
     success, text = game.place_bid(user.id, amount, auction_id=auction_id)
     if not success:
-        await message.reply_text(f"⚠️ {text}", parse_mode="HTML")
+        await message.reply_text(text, parse_mode="HTML")
         return
 
     game.extend_auction(HERO_CLASH_AUCTION_EXTENSION_SECONDS)
     highest = max(game.current_bids.values()) if game.current_bids else amount
     name = game.players.get(user.id, user.first_name or "Player")
     await message.reply_text(
-        f"💰 {_hc_mention(user.id, name)} bids <b>{amount}</b>! "
-        f"(Highest: <b>{highest}</b>)\n"
-        f"⏳ +{HERO_CLASH_AUCTION_EXTENSION_SECONDS}s added.",
+        f"{_hc_mention(user.id, name)} bids <b>{amount}</b>. "
+        f"Highest: <b>{highest}</b>.\n"
+        f"+{HERO_CLASH_AUCTION_EXTENSION_SECONDS}s added.",
         parse_mode="HTML",
     )
 
@@ -6336,13 +6336,11 @@ async def start_hero_clash_battle(chat_id: int, context: ContextTypes.DEFAULT_TY
     await context.bot.send_message(
         chat_id=chat_id,
         text=(
-            "⚔️ <b>THE AUCTION IS OVER — BATTLE BEGINS!</b> ⚔️\n\n"
-            f"Everyone has <b>{HEROES_PER_PLAYER}</b> heroes. "
-            f"There will be <b>{BATTLE_ROUNDS}</b> rounds.\n\n"
-            "<blockquote>Each round, every player sends one unused hero. "
-            "All heroes fight a free-for-all until one survives. "
-            "The round winner earns 1 win. Most wins after 5 rounds takes "
-            "the crown. A tie goes to sudden death.</blockquote>"
+            "<b>Battle begins</b>\n\n"
+            f"Each player has {HEROES_PER_PLAYER} heroes.\n"
+            f"{BATTLE_ROUNDS} rounds. Send one unused hero each round.\n\n"
+            "All heroes fight until one survives. The winner gets 1 win. "
+            "Most round wins takes the game. Ties go to sudden death."
         ),
         parse_mode="HTML",
     )
@@ -6361,9 +6359,9 @@ async def start_hero_clash_battle_round(chat_id: int, context: ContextTypes.DEFA
     token = game.battle_token
     is_sudden_death = game.phase == "sudden_death"
     if is_sudden_death:
-        label = f"⚡ SUDDEN DEATH {game.sudden_death_count}"
+        label = f"Sudden Death {game.sudden_death_count}"
     else:
-        label = f"ROUND {game.round_num}/{BATTLE_ROUNDS}"
+        label = f"Round {game.round_num}/{BATTLE_ROUNDS}"
 
     pickers = ", ".join(
         _hc_mention(uid, game.players.get(uid, "Player"))
@@ -6374,25 +6372,24 @@ async def start_hero_clash_battle_round(chat_id: int, context: ContextTypes.DEFA
         available = game.available_heroes(uid)
         used = len(game.rosters.get(uid, [])) - len(available)
         roster_lines.append(
-            f"{_hc_mention(uid, game.players.get(uid, 'Player'))} — "
+            f"{_hc_mention(uid, game.players.get(uid, 'Player'))}: "
             f"{len(available)} available"
-            + (f" · {used} used" if not is_sudden_death else "")
+            + (f", {used} used" if not is_sudden_death else "")
         )
 
     if is_sudden_death:
         instruction = (
-            "The players tied at the top of the table may reuse any owned hero. "
-            "Send one hero each — the winner takes the crown!"
+            "Tied players may reuse any hero. Winner takes the game."
         )
     else:
         instruction = (
-            "Send one <b>unused</b> hero. Heroes already sent cannot fight again."
+            "Send one unused hero. Used heroes cannot fight again."
         )
 
     keyboard = InlineKeyboardMarkup(
         [[
             InlineKeyboardButton(
-                "🦸 Choose Hero",
+                "Choose Hero",
                 switch_inline_query_current_chat=f"hcpick {chat_id}",
             )
         ]]
@@ -6401,14 +6398,13 @@ async def start_hero_clash_battle_round(chat_id: int, context: ContextTypes.DEFA
     await context.bot.send_message(
         chat_id=chat_id,
         text=(
-            f"⚔️ <b>{label}</b>\n\n"
+            f"<b>{label}</b>\n\n"
             f"{instruction}\n\n"
-            f"👉 Picking: {pickers}\n\n"
-            f"<blockquote expandable><b>Your heroes</b>\n"
-            f"{chr(10).join(roster_lines)}</blockquote>\n\n"
-            f"⏳ <b>{HERO_CLASH_BATTLE_SECONDS}s</b> to pick. "
-            f"Every pick adds {HERO_CLASH_BATTLE_EXTENSION_SECONDS}s. "
-            "Tap the button and select a hero."
+            f"Picking: {pickers}\n\n"
+            f"<b>Your heroes</b>\n"
+            f"{chr(10).join(roster_lines)}\n\n"
+            f"{HERO_CLASH_BATTLE_SECONDS}s to pick. "
+            f"Each pick adds {HERO_CLASH_BATTLE_EXTENSION_SECONDS}s."
         ),
         reply_markup=keyboard,
         parse_mode="HTML",
@@ -6454,10 +6450,10 @@ async def hero_clash_battle_timer(
 
     auto_picked = game.auto_pick_missing()
     if auto_picked:
-        lines = ["⏰ <b>Time's up!</b> Auto-picked for:"]
+        lines = ["Time's up. Auto-picked:"]
         for uid, hero in auto_picked:
             lines.append(
-                f"• {_hc_mention(uid, game.players.get(uid, 'Player'))} — "
+                f"- {_hc_mention(uid, game.players.get(uid, 'Player'))}: "
                 f"<b>{html.escape(hero.name)}</b>"
             )
         await context.bot.send_message(
@@ -6483,7 +6479,7 @@ async def _handle_hero_clash_pick(
 
     if update.effective_chat.id != session.chat_id:
         await message.reply_text(
-            "⚠️ Pick your Hero Clash hero in the group where the game is running.",
+            "Pick your Hero Clash hero in the game group.",
             parse_mode="HTML",
         )
         return
@@ -6492,15 +6488,15 @@ async def _handle_hero_clash_pick(
         user.id, hero_order, battle_token=battle_token
     )
     if not success:
-        await message.reply_text(f"⚠️ {text}", parse_mode="HTML")
+        await message.reply_text(text, parse_mode="HTML")
         return
 
     game.extend_battle(HERO_CLASH_BATTLE_EXTENSION_SECONDS)
     all_in = game.all_picks_in()
     name = game.players.get(user.id, user.first_name or "Player")
-    reply = f"✅ {_hc_mention(user.id, name)} — {html.escape(text)}"
+    reply = f"{_hc_mention(user.id, name)}: {html.escape(text)}"
     if not all_in:
-        reply += f"\n⏳ +{HERO_CLASH_BATTLE_EXTENSION_SECONDS}s added."
+        reply += f"\n+{HERO_CLASH_BATTLE_EXTENSION_SECONDS}s added."
     await message.reply_text(reply, parse_mode="HTML")
 
     # Only the text fallback leaves a raw marker; photo picks are already pretty.
@@ -6529,32 +6525,28 @@ async def resolve_hero_clash_battle_round(chat_id: int, context: ContextTypes.DE
     winner_mention = _hc_mention(winner_id, winner_name)
 
     lines = [
-        f"⚔️ <b>{html.escape(result['label'])} RESULT</b>",
+        f"<b>{html.escape(result['label'])} result</b>",
         "",
-        f"🏅 <b>{winner_mention} wins the round with "
-        f"{html.escape(result['winner_hero'])}!</b>",
+        f"{winner_mention} wins with <b>{html.escape(result['winner_hero'])}</b>.",
         "",
-        "<blockquote><b>Sent to battle</b>",
+        "<b>Picks</b>",
     ]
     for uid, hero_name in result["picks"].items():
         lines.append(
-            f"{_hc_mention(uid, game.players.get(uid, 'Player'))} — "
+            f"{_hc_mention(uid, game.players.get(uid, 'Player'))}: "
             f"{html.escape(hero_name)}"
         )
-    lines.append("</blockquote>")
     lines.append("")
-    lines.append("<blockquote expandable><b>Battle log</b>")
+    lines.append("<b>Battle log</b>")
     for log_line in _hc_trim_log(result["log_lines"]):
         lines.append(html.escape(log_line))
-    lines.append("</blockquote>")
     lines.append("")
-    lines.append("<blockquote><b>Round wins</b>")
+    lines.append("<b>Round wins</b>")
     for uid in game.get_standings():
         wins = game.wins.get(uid, 0)
         lines.append(
-            f"{_hc_mention(uid, game.players.get(uid, 'Player'))} — <b>{wins}</b>"
+            f"{_hc_mention(uid, game.players.get(uid, 'Player'))}: <b>{wins}</b>"
         )
-    lines.append("</blockquote>")
 
     await context.bot.send_message(
         chat_id=chat_id,
@@ -6570,9 +6562,9 @@ async def resolve_hero_clash_battle_round(chat_id: int, context: ContextTypes.DE
         await context.bot.send_message(
             chat_id=chat_id,
             text=(
-                "⚡ <b>SUDDEN DEATH!</b>\n\n"
-                "The leaders are tied. Tied players may reuse any owned hero — "
-                "next round decides it!"
+                "<b>Sudden death</b>\n\n"
+                "The leaders are tied. Tied players may reuse any hero. "
+                "Next round decides the winner."
             ),
             parse_mode="HTML",
         )

@@ -126,8 +126,8 @@ class Hero:
     def stat_line(self) -> str:
         s = self.stats
         return (
-            f"STR {s.strength} · SPD {s.speed} · PWR {s.power} · "
-            f"DUR {s.durability} · CMB {s.combat} · INT {s.intelligence}"
+            f"STR {s.strength}, SPD {s.speed}, PWR {s.power}, "
+            f"DUR {s.durability}, CMB {s.combat}, INT {s.intelligence}"
         )
 
 
@@ -316,7 +316,7 @@ def run_ffa(combatants: List[Tuple[Hero, int]]) -> Tuple[Hero, List[str], Dict[i
 
     while sum(1 for h in heroes if h.is_alive) > 1 and wave < MAX_BATTLE_WAVES:
         wave += 1
-        log.append(f"— Wave {wave} —")
+        log.append(f"Wave {wave}")
         order = sorted(
             [h for h in heroes if h.is_alive],
             key=lambda h: (
@@ -353,7 +353,7 @@ def run_ffa(combatants: List[Tuple[Hero, int]]) -> Tuple[Hero, List[str], Dict[i
                         f"({enemy.name} {enemy.current_hp:.0f} HP)"
                     )
                     if not enemy.is_alive:
-                        log.append(f"*** {enemy.name} eliminated! ***")
+                        log.append(f"{enemy.name} eliminated.")
             else:
                 target = _select_target(hero, heroes)
                 if target is None:
@@ -373,7 +373,7 @@ def run_ffa(combatants: List[Tuple[Hero, int]]) -> Tuple[Hero, List[str], Dict[i
                     f"({target.name} {target.current_hp:.0f} HP)"
                 )
                 if not target.is_alive:
-                    log.append(f"*** {target.name} eliminated! ***")
+                    log.append(f"{target.name} eliminated.")
 
     alive = [h for h in heroes if h.is_alive]
     if len(alive) == 1:
@@ -384,7 +384,7 @@ def run_ffa(combatants: List[Tuple[Hero, int]]) -> Tuple[Hero, List[str], Dict[i
         winner = max(heroes, key=lambda h: h.base_score)
 
     if wave >= MAX_BATTLE_WAVES and len(alive) > 1:
-        log.append("*** Wave limit reached — highest remaining HP wins! ***")
+        log.append("Wave limit reached. Highest remaining HP wins.")
 
     return winner, log, damage_by_owner
 
@@ -841,12 +841,12 @@ class HeroClashGame:
             name = escape(self.players.get(uid, "Player"))
             return f'<a href="tg://user?id={uid}">{name}</a>'
 
-        lines: List[str] = ["🏆 <b>HERO CLASH — FINAL RESULT</b>", ""]
+        lines: List[str] = ["<b>Hero Clash final result</b>", ""]
 
         if winner is not None:
             lines.append(
-                f"🎉 <b>{mention(winner)} wins with "
-                f"{self.wins.get(winner, 0)} round wins!</b>"
+                f"{mention(winner)} wins with "
+                f"{self.wins.get(winner, 0)} round wins."
             )
         else:
             lines.append("No winner could be determined.")
@@ -858,30 +858,27 @@ class HeroClashGame:
             )
 
         lines.append("")
-        lines.append("<blockquote><b>Standings</b>")
+        lines.append("<b>Standings</b>")
         for rank, uid in enumerate(standings, 1):
             wins = self.wins.get(uid, 0)
             damage = self.total_damage.get(uid, 0.0)
             hero_count = len(self.rosters.get(uid, []))
             lines.append(
-                f"{rank}. {mention(uid)} — <b>{wins}</b> wins · "
-                f"{damage:.0f} damage · {hero_count}/5 heroes"
+                f"{rank}. {mention(uid)}: {wins} wins, "
+                f"{damage:.0f} damage, {hero_count}/5 heroes"
             )
-        lines.append("</blockquote>")
 
         if self.round_results:
             lines.append("")
-            lines.append("<blockquote expandable><b>Round winners</b>")
+            lines.append("<b>Round winners</b>")
             for result in self.round_results:
-                wname = self.players.get(result["winner_id"], "Player")
                 lines.append(
-                    f"{escape(result['label'])} — {mention(result['winner_id'])} "
+                    f"{escape(result['label'])}: {mention(result['winner_id'])} "
                     f"({escape(result['winner_hero'])})"
                 )
-            lines.append("</blockquote>")
 
         lines.append("")
-        lines.append("<i>use /start for a new game.</i>")
+        lines.append("<i>Use /start for a new game.</i>")
         return "\n".join(lines)
 
 

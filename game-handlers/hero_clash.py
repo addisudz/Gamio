@@ -22,6 +22,7 @@ import copy
 import csv
 import os
 import random
+import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
@@ -409,6 +410,7 @@ class HeroClashGame:
         self.current_hero: Optional[Hero] = None
         self.current_bids: Dict[int, int] = {}
         self.card_file_ids: Dict[int, str] = {}
+        self.auction_deadline = 0.0
 
         # Battle state
         self.round_num = 0
@@ -419,6 +421,7 @@ class HeroClashGame:
         self.required_pickers: List[int] = []
         self.battle_token = 0
         self.battle_resolving = False
+        self.battle_deadline = 0.0
         self.sudden_death_count = 0
         self.round_results: List[dict] = []
         self.winner_id: Optional[int] = None
@@ -466,6 +469,7 @@ class HeroClashGame:
         self.current_bids = {}
         self.current_hero = None
         self.card_file_ids = {}
+        self.auction_deadline = 0.0
         self.phase = "auction"
         self.auction_num = 0
         self.current_auction_id = 0
@@ -476,6 +480,7 @@ class HeroClashGame:
         self.sudden_death_count = 0
         self.winner_id = None
         self.battle_resolving = False
+        self.battle_deadline = 0.0
         self.battle_token = 0
         return True
 
@@ -500,7 +505,7 @@ class HeroClashGame:
             for uid in self.players
         )
 
-    def next_auction(self) -> Optional[Hero]:
+    def next_auction(self, duration: float = 0.0) -> Optional[Hero]:
         active = self.active_bidders()
         if not active or not self._pool:
             return None
@@ -510,14 +515,26 @@ class HeroClashGame:
         self.current_bids = {}
         self.current_auction_id += 1
         self.auction_num += 1
+        self.auction_deadline = time.monotonic() + max(0.0, duration)
         self.phase = "auction"
         return hero
+
+    def auction_seconds_left(self) -> float:
+        if self.phase != "auction" or self.auction_deadline <= 0:
+            return 0.0
+        return max(0.0, self.auction_deadline - time.monotonic())
+
+    def extend_auction(self, seconds: float) -> None:
+        if self.phase == "auction" and self.auction_deadline > 0:
+            self.auction_deadline += max(0.0, seconds)
 
     def place_bid(self, user_id: int, amount: int, auction_id: Optional[int] = None) -> Tuple[bool, str]:
         if auction_id is not None and auction_id != self.current_auction_id:
             return False, "That auction has already ended."
         if self.phase != "auction" or self.current_hero is None:
             return False, "Bidding is not open right now."
+        if self.auction_seconds_left() <= 0:
+            return False, "Bidding has closed for this hero."
         if user_id not in self.players:
             return False, "You are not in this game."
         if user_id not in self.active_bidders():
@@ -545,6 +562,7 @@ class HeroClashGame:
         if not active:
             self.current_hero = None
             self.current_bids = {}
+            self.auction_deadline = 0.0
             return None
 
         bids = {
@@ -560,9 +578,22 @@ class HeroClashGame:
             winner = random.choice(tied)
             price = highest
         else:
-            winner = random.choice(active)
-            price = 1
-            tied = []
+            # Nobody bid: skip this hero instead of giving it away for free.
+            hero = self.current_hero
+            self.current_hero = None
+            self.current_bids = {}
+            self.auction_deadline = 0.0
+            return {
+                "hero": hero,
+                "winner_id": None,
+                "price": 0,
+                "tied": [],
+                "is_auto": False,
+                "is_skip": True,
+                "budget_left": 0,
+                "roster_size": 0,
+                "drafted": self.is_drafted(),
+            }
 
         price = max(0, min(price, self.max_bid(winner)))
         self.budgets[winner] -= price
@@ -572,6 +603,7 @@ class HeroClashGame:
         self.rosters[winner].append(hero)
         self.current_hero = None
         self.current_bids = {}
+        self.auction_deadline = 0.0
 
         if self.is_drafted():
             self.phase = "battle_ready"
@@ -581,7 +613,8 @@ class HeroClashGame:
             "winner_id": winner,
             "price": price,
             "tied": tied,
-            "is_auto": not bids,
+            "is_auto": False,
+            "is_skip": False,
             "budget_left": self.budgets[winner],
             "roster_size": len(self.rosters[winner]),
             "drafted": self.is_drafted(),
@@ -594,18 +627,33 @@ class HeroClashGame:
         self.battle_picks = {}
         self.required_pickers = list(self.players.keys())
         self.battle_resolving = False
+        self.battle_deadline = 0.0
         self.sudden_death_count = 0
         self.battle_token += 1
         for uid in self.players:
             self.used_orders[uid] = set()
 
-    def start_battle_round(self) -> bool:
+    def start_battle_round(self, duration: float = 0.0) -> bool:
         if self.phase not in ("battle", "sudden_death"):
             return False
         self.battle_picks = {}
         self.battle_resolving = False
+        self.battle_deadline = time.monotonic() + max(0.0, duration)
         self.battle_token += 1
         return True
+
+    def battle_seconds_left(self) -> float:
+        if self.phase not in ("battle", "sudden_death") or self.battle_deadline <= 0:
+            return 0.0
+        return max(0.0, self.battle_deadline - time.monotonic())
+
+    def extend_battle(self, seconds: float) -> None:
+        if (
+            self.phase in ("battle", "sudden_death")
+            and self.battle_deadline > 0
+            and not self.battle_resolving
+        ):
+            self.battle_deadline += max(0.0, seconds)
 
     def available_heroes(self, user_id: int) -> List[Hero]:
         roster = self.rosters.get(user_id, [])
@@ -738,6 +786,7 @@ class HeroClashGame:
         }
 
         self.battle_picks = {}
+        self.battle_deadline = 0.0
 
         if was_phase == "battle" and was_round >= BATTLE_ROUNDS:
             self.round_num = BATTLE_ROUNDS

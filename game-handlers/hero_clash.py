@@ -499,6 +499,11 @@ class HeroClashGame:
         reserve = max(0, slots_left - 1)
         return max(0, remaining - reserve)
 
+    def all_bids_in(self) -> bool:
+        """True when every active bidder has a bid on the current hero."""
+        active = self.active_bidders()
+        return bool(active) and all(uid in self.current_bids for uid in active)
+
     def is_drafted(self) -> bool:
         return all(
             len(self.rosters.get(uid, [])) >= HEROES_PER_PLAYER

@@ -6312,15 +6312,18 @@ async def _handle_hero_clash_bid(
         await message.reply_text(text, parse_mode="HTML")
         return
 
-    game.extend_auction(HERO_CLASH_AUCTION_EXTENSION_SECONDS)
+    all_bids_in = game.all_bids_in()
+    if not all_bids_in:
+        game.extend_auction(HERO_CLASH_AUCTION_EXTENSION_SECONDS)
     highest = max(game.current_bids.values()) if game.current_bids else amount
     name = game.players.get(user.id, user.first_name or "Player")
-    await message.reply_text(
+    reply = (
         f"{_hc_mention(user.id, name)} bids <b>{amount}</b>. "
-        f"Highest: <b>{highest}</b>.\n"
-        f"+{HERO_CLASH_AUCTION_EXTENSION_SECONDS}s added.",
-        parse_mode="HTML",
+        f"Highest: <b>{highest}</b>."
     )
+    if not all_bids_in:
+        reply += f"\n+{HERO_CLASH_AUCTION_EXTENSION_SECONDS}s added."
+    await message.reply_text(reply, parse_mode="HTML")
 
     # Keep the auction tidy by removing the raw "hc_bid:..." marker message.
     try:
@@ -6491,8 +6494,9 @@ async def _handle_hero_clash_pick(
         await message.reply_text(text, parse_mode="HTML")
         return
 
-    game.extend_battle(HERO_CLASH_BATTLE_EXTENSION_SECONDS)
     all_in = game.all_picks_in()
+    if not all_in:
+        game.extend_battle(HERO_CLASH_BATTLE_EXTENSION_SECONDS)
     name = game.players.get(user.id, user.first_name or "Player")
     reply = f"{_hc_mention(user.id, name)}: {html.escape(text)}"
     if not all_in:
